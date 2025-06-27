@@ -13,6 +13,11 @@
 ```
 $ python flask_server.py
 ```
-<br/><br>
-### 2. Video streaming
+<br/>
+
+### 2. YOLO Detection
+```
+$ python desktop_yolo_stream.py
+```
+<br>
 
