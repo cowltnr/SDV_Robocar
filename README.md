@@ -105,7 +105,7 @@ $ python desktop_yolo_stream.py
  79: 'toothbrush'
  }
  <br/><br/>
- **fine-tuning model :**<br/>
+ **fine-tuned model (best.pt) :**<br/>
 { 0: 'counter',
  1: 'pillar',
  2: 'desk',
