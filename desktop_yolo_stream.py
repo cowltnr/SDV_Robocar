@@ -61,7 +61,7 @@ while cap.isOpened():
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
             # --- 6. 결과를 Flask 서버로 전송 ---
-            timestamp = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             robocar_speed = 1.0  # 임의 값 또는 추후 실제 센서 연동
 
             # 전송할 JSON 구조 정의
@@ -78,7 +78,7 @@ while cap.isOpened():
             }
 
             try:
-                res = requests.post("http://localhost:8080/inference", json=payload)
+                res = requests.post("http://192.168.50.202:8080/inference", json=payload)
                 if res.status_code != 200:
                     print(f"전송 실패: {res.status_code}")
             except Exception as e:
