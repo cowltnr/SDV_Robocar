@@ -9,13 +9,13 @@
 - Additionally, receive speed of Robocar<br/>
 
 
-### 1. Run Flask server
+### 1. Run Flask server (Robocar)
 ```
 $ python flask_server.py
 ```
 <br/>
 
-### 2. YOLO Detection
+### 2. YOLO Detection (Desktop)
 ```
 $ python desktop_yolo_stream.py
 ```
