@@ -6,7 +6,7 @@
 **Desktop**<br/>
 - Receive camera streaming stream from Robocar<br/>
 - Extract class and bbox information from Robocar<br/>
-- Additionally, receive speed of Robocar<br/>
+- Additionally, receive speed and GPS of Robocar<br/>
 
 
 ### 1. Run Flask server (Robocar)
