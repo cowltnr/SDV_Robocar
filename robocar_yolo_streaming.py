@@ -14,19 +14,17 @@ class_colors = {
     cls_id: tuple(random.randint(0, 255) for _ in range(3))
     for cls_id in class_names
 }
-# --- 2. 로보카 Flask 서버에서 영상 스트리밍 수신 ---
-stream_url = "http://192.168.50.165:8000/video"
-cap = cv2.VideoCapture(stream_url)
+# --- 2. 로보카에서 영상 스트리밍 ---
+cap = cv2.VideoCapture(0)
 
 # --- 3. 루프: 프레임 수신 + YOLO 추론 ---
 while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
-        print("스트리밍 수신 실패")
-        continue
+        break
 
     # --- 4. YOLO 추론 수행 ---
-    results = model.predict(source=frame, classes=None, conf=0.3, verbose=False)
+    results = model.predict(source=frame, classes=None, conf=0.3, verbose=0)
     result = results[0]
 
     boxes = result.boxes
@@ -77,7 +75,7 @@ while cap.isOpened():
             }
 
             try:
-                res = requests.post("http://192.168.50.202:8080/inference", json=payload)
+                res = requests.post("http://192.168.50.202:8080/inference", json=payload)  # laptop: 192.168.50.202
                 if res.status_code != 200:
                     print(f"전송 실패: {res.status_code}")
             except Exception as e:
