@@ -2,7 +2,7 @@ from flask import Flask, Response, request
 import cv2
 import time
 import threading
-
+# 안녕
 # Flask 서버 생성
 app = Flask(__name__)
 
@@ -79,7 +79,7 @@ def sensor_loop():
                 except requests.exceptions.RequestException as e:
                     print("[/speed POST 오류]", e)
 
-                last_sent = now#ssfsfsfsdfsfsdfs
+                last_sent = now
     finally:
         node.destroy_node()
         rclpy.shutdown()
