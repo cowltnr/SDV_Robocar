@@ -4,6 +4,7 @@ import random
 import time
 import datetime
 import requests
+import threading
 
 # --- 1. 모델 로드 ---
 model = YOLO("detector/yolov8s.pt")
@@ -17,7 +18,28 @@ class_colors = {
 # --- 2. 로보카에서 영상 스트리밍 ---
 cap = cv2.VideoCapture(0)
 
-# --- 3. 루프: 프레임 수신 + YOLO 추론 ---
+def speed_thread():
+    while True:
+        # --- 6. 결과를 Flask 서버로 전송 ---
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        robocar_speed = 1.0  # 임의 값 또는 추후 실제 센서 연동
+
+        # 전송할 JSON 구조 정의
+        payload = {
+            "timestamp": timestamp,
+            "robocar_speed": robocar_speed
+        }   
+        try:
+            res = requests.post("http://192.168.50.202:8080/inference", json=payload)  # laptop: 192.168.50.202
+            if res.status_code != 200:
+                print(f"전송 실패: {res.status_code}")
+        except Exception as e:
+            print(f"POST 전송 에러: {e}")
+        time.sleep(1.0)
+
+threading.Thread(target=speed_thread, daemon=True).start()
+
+    # --- 3. 루프: 프레임 수신 + YOLO 추론 ---
 while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
@@ -57,30 +79,28 @@ while cap.isOpened():
             cv2.putText(frame, label, (x1, y1 - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
-            # --- 6. 결과를 Flask 서버로 전송 ---
-            timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            robocar_speed = 1.0  # 임의 값 또는 추후 실제 센서 연동
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        robocar_speed = 1.0  # 임의 값 또는 추후 실제 센서 연동
 
-            # 전송할 JSON 구조 정의
-            payload = {
-                "timestamp": timestamp,
-                "robocar_speed": robocar_speed,
-                "objects": [
-                    {
-                        "class": obj["class"],
-                        "conf": obj["conf"],
-                        "bbox": obj["bbox"]
-                    } for obj in detected
-                ]
-            }
+        # 전송할 JSON 구조 정의
+        payload = {
+            "timestamp": timestamp,
+            "robocar_speed": robocar_speed,
+            "objects": [
+                {
+                    "class": obj["class"],
+                    "conf": obj["conf"],
+                    "bbox": obj["bbox"]
+                } for obj in detected
+            ]
+        }
 
-            try:
-                res = requests.post("http://192.168.50.202:8080/inference", json=payload)  # laptop: 192.168.50.202
-                if res.status_code != 200:
-                    print(f"전송 실패: {res.status_code}")
-            except Exception as e:
-                print(f"POST 전송 에러: {e}")
-
+        try:
+            res = requests.post("http://192.168.50.202:8080/inference", json=payload)  # laptop: 192.168.50.202
+            if res.status_code != 200:
+                print(f"전송 실패: {res.status_code}")
+        except Exception as e:
+            print(f"POST 전송 에러: {e}")
 
     cv2.imshow("YOLO Detection", frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
