@@ -18,6 +18,9 @@ class_colors = {
 stream_url = "http://192.168.50.165:8000/video"
 cap = cv2.VideoCapture(stream_url)
 
+
+
+
 # --- 3. 루프: 프레임 수신 + YOLO 추론 ---
 while cap.isOpened():
     ret, frame = cap.read()
@@ -64,7 +67,7 @@ while cap.isOpened():
             robocar_speed = 1.0  # 임의 값 또는 추후 실제 센서 연동
 
             # 전송할 JSON 구조 정의
-            payload = {
+            '''payload = {
                 "timestamp": timestamp,
                 "robocar_speed": robocar_speed,
                 "objects": [
@@ -74,7 +77,22 @@ while cap.isOpened():
                         "bbox": obj["bbox"]
                     } for obj in detected
                 ]
+            }'''
+            payload_speed ={
+                "timestamp": timestamp,
+                "robocar_speed": robocar_speed
             }
+            payload_objects = {
+                "timestamp": timestamp,
+                "objects": [
+                    {
+                        "class": obj["class"],
+                        "conf": obj["conf"],
+                        "bbox": obj["bbox"]
+                    } for obj in detected
+                ]
+            }
+
 
             try:
                 res = requests.post("http://192.168.50.202:8080/inference", json=payload)
@@ -84,7 +102,7 @@ while cap.isOpened():
                 print(f"POST 전송 에러: {e}")
 
 
-    cv2.imshow("YOLO Detection", frame)
+    cv2.imshow("YOLO Detection", frame)#ssf
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
