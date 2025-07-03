@@ -79,7 +79,7 @@ def sensor_loop():
                 except requests.exceptions.RequestException as e:
                     print("[/speed POST 오류]", e)
 
-                last_sent = now
+                last_sent = now#ssfsfsfsdfsfsdfs
     finally:
         node.destroy_node()
         rclpy.shutdown()
