@@ -82,6 +82,12 @@ while cap.isOpened():
                 "timestamp": timestamp,
                 "robocar_speed": robocar_speed
             }
+            try:
+                # 새로운 /telemetry 엔드포인트로 전송
+                requests.post("http://192.168.50.202:8080/speed", json=payload_speed)
+            except Exception as e:
+                print(f"속도 전송 에러: {e}")
+        
             payload_objects = {
                 "timestamp": timestamp,
                 "objects": [
@@ -93,14 +99,13 @@ while cap.isOpened():
                 ]
             }
 
-
             try:
-                res = requests.post("http://192.168.50.202:8080/inference", json=payload)
+                res = requests.post("http://192.168.50.202:8080/inference", json=payload_objects)
                 if res.status_code != 200:
                     print(f"전송 실패: {res.status_code}")
             except Exception as e:
                 print(f"POST 전송 에러: {e}")
-
+            
 
     cv2.imshow("YOLO Detection", frame)#ssf
     if cv2.waitKey(1) & 0xFF == ord('q'):
