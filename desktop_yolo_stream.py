@@ -4,6 +4,7 @@ import random
 import time
 import datetime
 import requests
+import threading
 
 # --- 1. 모델 로드 ---
 model = YOLO("detector/yolov8s.pt")
@@ -18,8 +19,27 @@ class_colors = {
 stream_url = "http://192.168.50.165:8000/video"
 cap = cv2.VideoCapture(stream_url)
 
+## 스레드 1: 속도 데이터 주기적 전송
+def send_speed_data():
+    while True:
+        robocar_speed = 1.0
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
+        payload_speed = {
+            "timestamp": timestamp,
+            "robocar_speed": robocar_speed,
+        }
+        try:
+            requests.post("http://192.168.50.202:8080/speed", json=payload_speed)
+        except Exception as e:
+            print(f"속도 전송 에러: {e}")
 
+        time.sleep(1) # 1초마다 전송
+
+#백그라운드 실행
+speed_thread = threading.Thread(target=send_speed_data)
+speed_thread.daemon = True # 메인 프로그램 종료 시 스레드도 자동 종료
+speed_thread.start()
 
 # --- 3. 루프: 프레임 수신 + YOLO 추론 ---
 while cap.isOpened():
@@ -62,49 +82,40 @@ while cap.isOpened():
             cv2.putText(frame, label, (x1, y1 - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
-            # --- 6. 결과를 Flask 서버로 전송 ---
-            timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")  # windows에선 콜론 인식 X
-            robocar_speed = 1.0  # 임의 값 또는 추후 실제 센서 연동
-
-            # 전송할 JSON 구조 정의
-            '''payload = {
-                "timestamp": timestamp,
-                "robocar_speed": robocar_speed,
-                "objects": [
-                    {
-                        "class": obj["class"],
-                        "conf": obj["conf"],
-                        "bbox": obj["bbox"]
-                    } for obj in detected
-                ]
-            }'''
-            payload_speed ={
-                "timestamp": timestamp,
-                "robocar_speed": robocar_speed
-            }
-            try:
-                # 새로운 /telemetry 엔드포인트로 전송
-                requests.post("http://192.168.50.202:8080/speed", json=payload_speed)
-            except Exception as e:
-                print(f"속도 전송 에러: {e}")
+        # --- 6. 결과를 Flask 서버로 전송 ---
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")  # windows에선 콜론 인식 X
         
-            payload_objects = {
-                "timestamp": timestamp,
-                "objects": [
-                    {
-                        "class": obj["class"],
-                        "conf": obj["conf"],
-                        "bbox": obj["bbox"]
-                    } for obj in detected
-                ]
-            }
 
-            try:
-                res = requests.post("http://192.168.50.202:8080/inference", json=payload_objects)
-                if res.status_code != 200:
-                    print(f"전송 실패: {res.status_code}")
-            except Exception as e:
-                print(f"POST 전송 에러: {e}")
+        # 전송할 JSON 구조 정의
+        '''payload = {
+            "timestamp": timestamp,
+            "robocar_speed": robocar_speed,
+            "objects": [
+                {
+                    "class": obj["class"],
+                    "conf": obj["conf"],
+                    "bbox": obj["bbox"]
+                } for obj in detected
+            ]
+        }'''
+    
+        payload_objects = {
+            "timestamp": timestamp,
+            "objects": [
+                {
+                    "class": obj["class"],
+                    "conf": obj["conf"],
+                    "bbox": obj["bbox"]
+                } for obj in detected
+            ]
+        }
+
+        try:
+            res = requests.post("http://192.168.50.202:8080/inference", json=payload_objects)
+            if res.status_code != 200:
+                print(f"전송 실패: {res.status_code}")
+        except Exception as e:
+            print(f"POST 전송 에러: {e}")
             
 
     cv2.imshow("YOLO Detection", frame)#ssf
