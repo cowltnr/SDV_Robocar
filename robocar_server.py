@@ -26,12 +26,10 @@ def generate_frames():
 def video():
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-# --- 2. (선택) 속도 수신용 엔드포인트 ---
-@app.route('/speed', methods=['POST'])
-def receive_speed():
-    data = request.get_json()
-    print(f"[속도 수신] timestamp: {data.get('timestamp')}, speed: {data.get('speed')} m/s")
-    return {"status": "ok"}
+# --- 2. 추후에 odom 정보 추가 ---
+@app.route('/odometry', methods=['POST'])
+def odom():
+    return
 
 # --- 3. 서버 실행 ---
 if __name__ == "__main__":
