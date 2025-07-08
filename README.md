@@ -46,7 +46,7 @@ $ python desktop_yolo_stream2.py    # camera streaming + odometry subscription
 
 ## Additional files
 ```robocar_yolo_stream.py```: YOLO detection on Robocar</br>
-```robocar_odom.py```: Save odometry information(JSON format) on Robocar</br>
+```robocar_odom.py```: Save odometry information (JSON format) on Robocar</br>
 </br><br/>
 
 ## Data classes
