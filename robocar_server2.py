@@ -11,6 +11,12 @@ from nav_msgs.msg import Odometry
 # --- Flask 서버 정의 ---
 app = Flask(__name__)
 cap = cv2.VideoCapture(0)  # 0 또는 1
+'''
+# 해상도 낮추기 (320 x 240)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
+'''
+
 shared_queue = multiprocessing.Queue(maxsize=1)
 
 # --- MJPEG 영상 스트리밍 함수 ---
