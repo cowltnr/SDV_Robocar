@@ -4,6 +4,7 @@ import random
 import time
 import datetime
 import requests
+import base64
 
 # --- 1. 모델 로드 ---
 model = YOLO("detector/yolov8s.pt")
@@ -31,7 +32,10 @@ def fake_gps_from_odom(x_m, y_m):
         "lon": base_lon + y_m / 88000
     }
 
-# --- 5. YOLO 루프 시작 ---
+# --- 5. 전송 타이머 초기화 ---
+last_send_time = time.time()
+
+# --- 6. YOLO 루프 시작 ---
 while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
@@ -77,35 +81,48 @@ while cap.isOpened():
         cv2.putText(frame, label, (x1, y1 - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
-    # --- D. JSON 페이로드 조립 ---
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    payload = {
-        "timestamp": timestamp,
-        "gps": gps_info,
-        "robocar_speed": robocar_speed,
-        "objects": [
-            {
-                "class": obj["class"],
-                "conf": obj["conf"],
-                "bbox": obj["bbox"]
-            } for obj in detected
-        ]
-    }
+    # --- D. 1초마다 JSON + 이미지 전송 ---
+    now = time.time()
+    if now - last_send_time >= 1.0:
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-    # --- E. 결과를 쿠버네티스 서버로 전송 ---
-    kube_server_url = "http://localhost:8080/inference"  # 노트북 IP: 192.168.0.10
-    try:
-        res = requests.post(kube_server_url, json=payload)
-        if res.status_code != 200:
-            print(f"[전송 실패] {res.status_code}")
-    except Exception as e:
-        print(f"[POST 오류] {e}")
+        # 프레임을 JPEG로 인코딩하고 Base64로 변환
+        _, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
+        img_b64 = base64.b64encode(buffer).decode('utf-8')
 
-    # --- F. 디버그용 화면 표시 ---
+        # 전송 페이로드 구성
+        payload = {
+            "timestamp": timestamp,
+            "gps": gps_info,
+            "robocar_speed": robocar_speed,
+            "objects": [
+                {
+                    "class": obj["class"],
+                    "conf": obj["conf"],
+                    "bbox": obj["bbox"]
+                } for obj in detected
+            ],
+            "image": img_b64  # base64로 인코딩된 이미지 포함
+        }
+
+        # 전송
+        kube_server_url = "http://localhost:8080/inference"
+        try:
+            res = requests.post(kube_server_url, json=payload)
+            if res.status_code != 200:
+                print(f"[전송 실패] {res.status_code}")
+            else:
+                print(f"[전송 성공] {timestamp}")
+        except Exception as e:
+            print(f"[POST 오류] {e}")
+
+        last_send_time = now
+
+    # --- E. 디버그용 화면 표시 ---
     cv2.imshow("YOLO Detection", frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-# 종료 처리
+# --- 종료 처리 ---
 cap.release()
 cv2.destroyAllWindows()

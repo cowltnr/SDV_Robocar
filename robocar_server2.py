@@ -37,7 +37,7 @@ def stream_odometry():
         data = shared_queue.get(timeout=1.0)  # 최신 메시지 수신 대기
         return jsonify(data)
     except queue.Empty:
-        return jsonify({"error": "No odometry data available"}), 204  # No Content
+        return jsonify({"error": "No odometry data available"}),   # No Content
 
 # --- ROS2 노드 정의 ---
 def ros_process(q):
