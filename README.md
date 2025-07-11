@@ -14,6 +14,12 @@
 - Save JSON files in real time (1s)<br/>
 <br/>
 
+### 0. Run the launch file (Robocar)
+```
+$ cd agilex/src/
+$ ros2 launch limo_base limo_base.launch.py    # Wait for 10 seconds after termination before restarting
+```
+
 ### 1. Run Robocar server (Robocar)
 ```
 $ python robocar_server.py    # only camera streaming
