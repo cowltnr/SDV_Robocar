@@ -11,7 +11,7 @@
 
 
 **Kubernetes**<br/>
-- Save JSON files in real time (1s)<br/>
+- Save JSON, JPEG files in real time (1s)<br/>
 <br/>
 
 ### 0. Run the launch file (Robocar)
