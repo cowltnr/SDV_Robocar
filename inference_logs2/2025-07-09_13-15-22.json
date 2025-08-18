@@ -7,7 +7,7 @@
   "robocar_speed": 0.0,
   "objects": [
     {
-      "class": "person",
+      "class": "tv",
       "conf": 0.91,
       "bbox": [
         12,
@@ -17,7 +17,7 @@
       ]
     },
     {
-      "class": "chair",
+      "class": "tv",
       "conf": 0.82,
       "bbox": [
         195,
@@ -27,7 +27,7 @@
       ]
     },
     {
-      "class": "table",
+      "class": "mouse",
       "conf": 0.7,
       "bbox": [
         35,
