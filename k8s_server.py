@@ -8,7 +8,7 @@ import base64
 app = Flask(__name__)
 
 # --- 저장 디렉토리 설정 ---
-LOG_DIR = "inference_logs2"
+LOG_DIR = "multithreading_logs"
 IMAGE_DIR = os.path.join(LOG_DIR, "images")
 os.makedirs(LOG_DIR, exist_ok=True)
 os.makedirs(IMAGE_DIR, exist_ok=True)
