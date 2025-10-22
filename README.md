@@ -41,11 +41,6 @@ $ python edge_server.py
 
 <br/><br/>
 
-## Additional files
-```robocar_yolo_stream.py```: YOLO detection on Robocar</br>
-```robocar_odom.py```: Save odometry information (JSON format) on Robocar</br>
-</br><br/>
-
 ## Data classes
 **yolov8s :**<br/>
 { 0: 'person',
