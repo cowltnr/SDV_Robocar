@@ -1,36 +1,33 @@
 ## Main steps
-**Robocar**<br/>
+**LIMO**<br/>
 - Run server<br/>
 - Stream camera<br/>
 - Subscribe to /wheel/odom topic(from ```base_limo.launch.py```)<br/>
 
 **Desktop**<br/>
-- Receive camera stream from Robocar<br/>
-- Extract class and bbox information from Robocar<br/>
-- Receive odometry data(pose, twist) from Robocar and compute GPS coordinates<br/>
+- Receive camera stream from LIMO<br/>
+- Extract class and bbox information from LIMO<br/>
+- Receive odometry data(pose, twist) from LIMO and compute GPS coordinates<br/>
 
 
 **Kubernetes**<br/>
 - Save JSON files in real time (1s)<br/>
 <br/>
 
-### 1. Run Robocar server (Robocar)
+### 1. Run IMO server (LIMO)
 ```
-$ python robocar_server.py    # only camera streaming
-or
-$ python robocar_server2.py    # camera streaming + odometry subscription
+$ ros2 launch limo_base limo_base.launch.py    # terminal 1
+$ python imo_server.py   # terminal 2 
 ```
 
-### 2. Run Kubernetes server (Kubernetes)
+### 2. Run k8s server (Kubernetes)
 ```
 $ python k8s_server.py
 ```
 
 ### 3. YOLO Detection + Odometry (Desktop)
 ```
-$ python desktop_yolo_stream.py    # only camera streaming
-or
-$ python desktop_yolo_stream2.py    # camera streaming + odometry subscription
+$ python edge_server.py    
 ```
 <br/>
 
@@ -43,11 +40,6 @@ $ python desktop_yolo_stream2.py    # camera streaming + odometry subscription
 <img src="https://github.com/user-attachments/assets/9a6a7beb-29b9-4d06-8f85-fc2fe75a017a" width="500" height="350"/>
 
 <br/><br/>
-
-## Additional files
-```robocar_yolo_stream.py```: YOLO detection on Robocar</br>
-```robocar_odom.py```: Save odometry information (JSON format) on Robocar</br>
-</br><br/>
 
 ## Data classes
 **yolov8s :**<br/>
