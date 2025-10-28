@@ -8,9 +8,11 @@ import base64
 app = Flask(__name__)
 
 # --- 저장 디렉토리 설정 ---
-LOG_DIR = "multithreading_logs"
+LOG_DIR = "logs"
+JSON_DIR = os.path.join(LOG_DIR, "json")
 IMAGE_DIR = os.path.join(LOG_DIR, "images")
 os.makedirs(LOG_DIR, exist_ok=True)
+os.makedirs(JSON_DIR, exist_ok=True)
 os.makedirs(IMAGE_DIR, exist_ok=True)
 
 @app.route('/inference', methods=['POST'])
