@@ -2,22 +2,29 @@
 **LIMO**<br/>
 - Run server<br/>
 - Stream camera<br/>
+- Scan LiDAR
 - Subscribe to /wheel/odom topic(from ```base_limo.launch.py```)<br/>
+- Subscribe to /scan topic(from ```ydlidar.launch.py```)<br/>
++ Receive distance of closest person from Desktop to control the LIMO<br/>
 
 **Desktop**<br/>
 - Receive camera stream from LIMO<br/>
 - Extract class and bbox information from LIMO<br/>
 - Receive odometry data(pose, twist) from LIMO and compute GPS coordinates<br/>
+- Receive 2D LiDAR data(angle_min, angle_increment, ranges) from LIMO and compute Camera & LiDAR calibration<br/>
+- POST distance to LIMO<br/>
 
 
 **Kubernetes**<br/>
-- Save JSON files in real time (1s)<br/>
+- Run server<br/>
+- Save JSON files & Images in real time (1s)<br/>
 <br/>
 
 ### 1. Run IMO server (LIMO)
 ```
 $ ros2 launch limo_base limo_base.launch.py    # terminal 1
-$ python imo_server.py   # terminal 2 
+$ ros2 launch ydlidar_ros2_driver ydlidar.launch.py   # terminal 2
+$ python imo_server_lidar.py    # terminal 3
 ```
 
 ### 2. Run k8s server (Kubernetes)
@@ -25,10 +32,16 @@ $ python imo_server.py   # terminal 2
 $ python k8s_server.py
 ```
 
-### 3. YOLO Detection + Odometry (Desktop)
+### 3. YOLO Detection + Odometry + 2D Lidar (Desktop)
 ```
-$ python edge_server.py    
+$ python edge_control.py
 ```
+
+### 4. Control IMO (LIMO)
+```
+$ python imo_control.py    # terminal 4
+```
+
 <br/>
 
 - YOLO Detection (Desktop)<br/>
