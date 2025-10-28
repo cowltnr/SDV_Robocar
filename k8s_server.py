@@ -26,7 +26,7 @@ def receive_inference():
         safe_timestamp = timestamp.replace(":", "_")  # 윈도우 등 호환을 위해 콜론 제거
 
         # --- JSON 로그 파일 저장 ---
-        json_path = os.path.join(LOG_DIR, f"{safe_timestamp}.json")
+        json_path = os.path.join(JSON_DIR, f"{safe_timestamp}.json")
         with open(json_path, "w") as f:
             json.dump(data, f, indent=2)
 
