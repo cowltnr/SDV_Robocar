@@ -8,6 +8,7 @@ import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 
 # --- Flask 서버 정의 ---
 app = Flask(__name__)
@@ -63,13 +64,21 @@ def get_ydlidar():
 
 def ros_process(odom_q, lidar_q):
     """ROS2 노드: Odometry + LiDAR 동시 구독"""
+
     class RobotStreamer(Node):
         def __init__(self):
             super().__init__('robot_streamer')
-            # --- Odometry 구독 ---
+            # --- Odometry 구독 (기본 QoS로 OK) ---
             self.create_subscription(Odometry, '/wheel/odom', self.odom_callback, 10)
-            # --- LiDAR 구독 ---
-            self.create_subscription(LaserScan, '/scan', self.lidar_callback, 10)
+
+            # --- LiDAR 구독: sensor_data QoS 프로파일 사용 ---
+            sensor_qos = QoSProfile(
+                depth=10,
+                reliability=ReliabilityPolicy.BEST_EFFORT,
+                history=HistoryPolicy.KEEP_LAST,
+                durability=DurabilityPolicy.VOLATILE,
+            )
+            self.create_subscription(LaserScan, '/scan', self.lidar_callback, sensor_qos)
 
         def odom_callback(self, msg):
             pose = msg.pose.pose

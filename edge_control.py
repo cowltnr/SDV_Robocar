@@ -2,32 +2,36 @@ import cv2
 from ultralytics import YOLO
 import random, time, datetime, requests, base64, threading, queue, math
 from collections import deque
+import yaml  # ★ 추가: 정책 YAML 읽기용
 
 # ---------------------------
 # Setting
 # ---------------------------
-IMO_BASE = "http://192.168.50.165"
+IMO_BASE   = "http://192.168.50.165"
 CLOUD_BASE = "http://localhost"
 
-STREAM_URL   = f"{IMO_BASE}:8000/video"
-ODOM_URL     = f"{IMO_BASE}:8000/odometry"
-LIDAR_URL    = f"{IMO_BASE}:8000/lidar"
-SERVER_URL   = f"{CLOUD_BASE}:8080/inference"
+STREAM_URL = f"{IMO_BASE}:8000/video"
+ODOM_URL   = f"{IMO_BASE}:8000/odometry"
+LIDAR_URL  = f"{IMO_BASE}:8000/lidar"
+SERVER_URL = f"{CLOUD_BASE}:8080/inference"
 
 # ★ 로보카 제어용(거리 전송) 엔드포인트
-DIST_API     = f"{IMO_BASE}:8001/control/distance"   # 로보카 서버에 이 엔드포인트가 있어야 함
+DIST_API   = f"{IMO_BASE}:8001/control/distance"   # 로보카 서버에 이 엔드포인트가 있어야 함
 
-INFER_HZ     = 10.0            # 추론 주기(Hz) 10 = 0.1s마다
-SEND_INTERVAL= 1.0             # 1초마다 전송
-JPEG_QUALITY = 70              # 전송용 JPEG 품질
-TIMEOUT_GET  = 0.3             # odom 요청 타임아웃
-TIMEOUT_POST = 0.5             # 전송 타임아웃
+# ★ 정책 파일 위치 (파일 이름 실제와 맞게 수정)
+POLICY_FILE = "received_policy.yaml"
+
+INFER_HZ      = 10.0            # 추론 주기(Hz) 10 = 0.1s마다
+SEND_INTERVAL = 1.0             # 1초마다 전송
+JPEG_QUALITY  = 70              # 전송용 JPEG 품질
+TIMEOUT_GET   = 0.3             # odom 요청 타임아웃
+TIMEOUT_POST  = 0.5             # 전송 타임아웃
 
 # Lidar Setting
-LIDAR_HZ    = 10.0     # 폴링 주기(Hz)
-LIDAR_TO    = 0.5      # GET timeout(s)
-LIDAR_LEN   = 401      # ranges 길이 정규화
-CAMERA_FOV_DEG = 71.0  # 카메라 수평 FoV (각도→인덱스 매핑용)
+LIDAR_HZ       = 10.0     # 폴링 주기(Hz)
+LIDAR_TO       = 0.5      # GET timeout(s)
+LIDAR_LEN      = 401      # ranges 길이 정규화
+CAMERA_FOV_DEG = 71.0     # 카메라 수평 FoV (각도→인덱스 매핑용)
 
 # GPS 근사 변환 기준
 BASE_LAT = 37.501000
@@ -38,6 +42,28 @@ def fake_gps_from_odom(x_m, y_m):
         "lat": BASE_LAT + x_m / 111000.0,
         "lon": BASE_LON + y_m /  88000.0,
     }
+
+# ---------------------------
+# 정책 체크 함수
+# ---------------------------
+def allow_send_distance():
+    """
+    YAML의 ingress-action을 읽어서 True/False 반환
+    - pass → True  (distance 전송 허용)
+    - drop → False (distance 전송 차단)
+    """
+    try:
+        with open(POLICY_FILE, "r") as f:
+            data = yaml.safe_load(f)
+
+        action = data["i2nsf-security-policy"]["rules"]["action"]["packet-action"]["ingress-action"]
+        # print(f"[Policy] ingress-action = {action}")
+        return action == "pass"
+
+    except Exception as e:
+        print(f"[Policy ERROR] YAML 파싱 실패 또는 필드 없음: {e}")
+        # 안전하게: 정책 실패 시 전송 막기 (원하면 True로 바꿀 수 있음)
+        return False
 
 # ---------------------------
 # 전역 공유 구조
@@ -62,18 +88,31 @@ def send_distance_to_robocar(dist_m: float, min_interval=0.2, delta=0.05):
     dist_m: 최근접 사람 거리(m)
     min_interval: 최소 전송 간격(s)
     delta: 이전 값 대비 변화가 이 이상일 때만 전송
+    + ingress-action == pass 일 때만 전송
     """
-    now = time.time()
+
+    now    = time.time()
     prev_t = _last_dist_sent["t"]
     prev_d = _last_dist_sent["d"]
 
     if dist_m is None:
         return
+
+    # 1) 정책 체크
+    if not allow_send_distance():
+        # drop이면 아예 전송 안 함
+        print(f"[Policy] ingress-action=drop → distance 전송 차단 ({dist_m:.2f} m)")
+        return
+
+    # 2) 전송 빈도 제어
     if now - prev_t < min_interval:
         return
+
+    # 3) 값 변화가 거의 없으면 전송 생략
     if (prev_d is not None) and (abs(prev_d - dist_m) < delta):
         return
 
+    # 4) 실제 전송
     try:
         r = requests.post(DIST_API, json={"distance": float(dist_m)}, timeout=0.3)
         if r.status_code == 200:
@@ -184,7 +223,7 @@ def infer_loop(model):
             best = (float("inf"), None)
 
             for obj in detected:
-                # 필요 시 특정 클래스만 사용: if obj["class"] != "person": continue
+                # 필요 시 특정 클래스만: if obj["class"] != "person": continue
                 x1, y1, x2, y2 = obj["bbox"]
                 cx = (x1 + x2) // 2
                 ratio = cx / image_w
@@ -210,7 +249,7 @@ def infer_loop(model):
             if best[1] is not None:
                 closest_person = best[1]
 
-        # ★ 여기서 로보카로 distance 전송(가장 가까운 사람 기준)
+        # ★ 여기서 로보카로 distance 전송(가장 가까운 사람 기준 + 정책 적용)
         dist_to_send = closest_person["distance"] if closest_person else None
         send_distance_to_robocar(dist_to_send)
 
@@ -326,7 +365,7 @@ if __name__ == "__main__":
     try:
         while not stop_evt.is_set():
             if frame_q:
-                cv2.imshow("YOLO Detection", frame_q[-1])
+                cv2.imshow("YOLO Detection (Live)", frame_q[-1])
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 stop_evt.set()
                 break
