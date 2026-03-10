@@ -44,7 +44,7 @@ BASE_LON = 127.036000
 # 회피 시퀀스 설정
 # ---------------------------
 # 첫 stop 발생 기준 거리
-STOP_TRIGGER = 1.0
+STOP_TRIGGER = 0.7
 
 # S-curve parameter
 K_TIME = 2.0        # k초

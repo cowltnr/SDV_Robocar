@@ -6,17 +6,20 @@
 - Subscribe to /wheel/odom topic(from ```base_limo.launch.py```)<br/>
 - Subscribe to /scan topic(from ```ydlidar.launch.py```)<br/>
 + Receive distance of closest person from Desktop to control the LIMO<br/>
++ Collision avoidance scenario driving<br/>
 
 **Desktop**<br/>
 - Receive camera stream from LIMO<br/>
 - Extract class and bbox information from LIMO<br/>
 - Receive odometry data(pose, twist) from LIMO and compute GPS coordinates<br/>
 - Receive 2D LiDAR data(angle_min, angle_increment, ranges) from LIMO and compute Camera & LiDAR calibration<br/>
-- POST distance to LIMO<br/>
+- Decide the avoidance sequence<br/> (Example scenario: If the person is on the left → steer right *n* degrees for *k* seconds → steer left *n* degrees for *2k* seconds → steer right *n* degrees for *k* seconds → align wheels to *0* degrees and move forward.)<br/>
++ POST distance & avoid state to LIMO<br/>
 
 
 **Kubernetes**<br/>
 - Run server<br/>
+- Send User intent to edge_controller<br/>
 - Save JSON files & Images in real time (1s)<br/>
 <br/>
 
@@ -32,12 +35,17 @@ $ python imo_server_lidar.py    # terminal 3
 $ python k8s_server.py
 ```
 
-### 3. YOLO Detection + Odometry + 2D Lidar (Desktop)
+### 3. Intent Sender server (Kubernetes)
+```
+$ python intent_server.py
+```
+
+### 4. YOLO Detection + Odometry + 2D Lidar (Desktop)
 ```
 $ python edge_control.py
 ```
 
-### 4. Control IMO (LIMO)
+### 5. Control IMO (LIMO)
 ```
 $ python imo_control.py    # terminal 4
 ```
@@ -45,12 +53,11 @@ $ python imo_control.py    # terminal 4
 <br/>
 
 - YOLO Detection (Desktop)<br/>
-<img src="https://github.com/user-attachments/assets/cfd2f5f8-caf9-4f42-a71e-4700724dfdeb" width="500" height="450"/>
+![img.png](images.png)
 </br></br>
 
 - Save files in real time (Kubernetes)</br>
-<img src="https://github.com/user-attachments/assets/1af6d34e-9590-4214-96c4-a6921b0f2eea" width="500" height="350"/>
-<img src="https://github.com/user-attachments/assets/9a6a7beb-29b9-4d06-8f85-fc2fe75a017a" width="500" height="350"/>
+![img_1.png](json.png)
 
 <br/><br/>
 
@@ -138,21 +145,5 @@ $ python imo_control.py    # terminal 4
  79: 'toothbrush'
  }
  <br/><br/>
- **fine-tuned model (best.pt) :**<br/>
-{ 0: 'counter',
- 1: 'pillar',
- 2: 'desk',
- 3: 'ticket machine',
- 4: 'fire extinguisher',
- 5: 'wastebasket',
- 6: 'information board',
- 7: 'chair',
- 8: 'car',
- 9: 'sculpture',
- 10: 'display stand',
- 11: 'table',
- 12: 'fence',
- 13: 'sign',
- 14: 'person'
- }
+
  
