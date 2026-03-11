@@ -38,6 +38,7 @@ $ python k8s_server.py
 ### 3. Intent Sender server (Kubernetes)
 ```
 $ python intent_server.py
+# received_policy.yaml: pass/drop to activate or deactivate stop/detour function
 ```
 
 ### 4. YOLO Detection + Odometry + 2D Lidar (Desktop)
@@ -58,8 +59,11 @@ $ python imo_control.py    # terminal 4
 
 - Save files in real time (Kubernetes)</br>
 ![img_1.png](json.png)
-
 <br/><br/>
+
+- Demonstration Video Clip<br/>
+[URL] https://youtu.be/589GNGIX3fk?si=oZB06Nk9Y8ozSOLz
+</br></br>
 
 ## Data classes
 **yolov8s :**<br/>
