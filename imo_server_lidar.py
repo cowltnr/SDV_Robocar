@@ -115,6 +115,7 @@ def ros_process(odom_q, lidar_q, image_q):
             data = {
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                 "angle_min": msg.angle_min,
+                "angle_max": msg.angle_max,
                 "angle_increment": msg.angle_increment,
                 "ranges": list(msg.ranges)
             }

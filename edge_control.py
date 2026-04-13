@@ -87,6 +87,7 @@ def allow_send_distance():
 # 전역 공유 구조
 # ---------------------------
 frame_q   = deque(maxlen=1)
+result_q  = deque(maxlen=1) 
 send_q    = queue.Queue(maxsize=10)
 
 odom_lock = threading.Lock()
@@ -95,6 +96,7 @@ odom_cache= {"gps": {"lat": None, "lon": None}, "speed": 0.0}
 lidar_lock  = threading.Lock()
 lidar_cache = {
     "angle_min": None,
+    "angle_max": None,
     "angle_increment": None,
     "ranges": []
 }
@@ -187,7 +189,7 @@ def capture_loop():
         print(f"[Capture] 스트림 연결 실패: {STREAM_URL}")
         return
 
-    print("[Capture] 시작 (영상 캡처 전용)")
+    print("[Capture] 시작")
     while not stop_evt.is_set():
         ok, frame = cap.read()
         if ok:
@@ -274,10 +276,12 @@ def infer_loop(model):
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
             cv2.putText(frame, label, (x1, y1 - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            result_q.append(frame)
 
         # --- LiDAR snapshot & closest person ---
         with lidar_lock:
             angle_min = lidar_cache["angle_min"]
+            angle_max = lidar_cache["angle_max"]
             angle_inc = lidar_cache["angle_increment"]
             ranges    = list(lidar_cache["ranges"])
 
@@ -304,21 +308,20 @@ def infer_loop(model):
                     continue
 
                 angle_global = angle_rel
-                idx = int((angle_global - angle_min) / angle_inc)
-
-                if 0 <= idx < len(ranges):
-                    dist = ranges[idx]
-                    if 0.02 < dist < 12.0:
-                        if dist < best[0]:
-                            best = (dist, {
-                                "class": obj["class"],
-                                "conf": obj["conf"],
-                                "bbox": obj["bbox"],
-                                "distance": round(dist, 3),
-                                "angle": round(math.degrees(angle_global), 2),
-                                "center_x": cx,
-                                "center_y": (y1 + y2) // 2
-                            })
+                angles = np.linspace(angle_min, angle_max, len(ranges))
+                idx = int(np.argmin(np.abs(angles - angle_global)))
+                dist = ranges[idx]
+                if 0.02 < dist < 12.0:
+                    if dist < best[0]:
+                        best = (dist, {
+                            "class": obj["class"],
+                            "conf": obj["conf"],
+                            "bbox": obj["bbox"],
+                            "distance": round(dist, 3),
+                            "angle": round(math.degrees(angle_global), 2),
+                            "center_x": cx,
+                            "center_y": (y1 + y2) // 2
+                        })
 
             if best[1] is not None:
                 closest_person = best[1]
@@ -500,6 +503,7 @@ def lidar_loop():
             if r.status_code == 200:
                 data = r.json()
                 angle_min = data.get("angle_min")
+                angle_max = data.get("angle_max") 
                 angle_inc = data.get("angle_increment")
                 ranges    = data.get("ranges", [])
 
@@ -510,6 +514,7 @@ def lidar_loop():
 
                 with lidar_lock:
                     lidar_cache["angle_min"]       = angle_min
+                    lidar_cache["angle_max"]       = angle_max 
                     lidar_cache["angle_increment"] = angle_inc
                     lidar_cache["ranges"]          = ranges
         except Exception:
@@ -549,8 +554,8 @@ if __name__ == "__main__":
 
     try:
         while not stop_evt.is_set():
-            if frame_q:
-                cv2.imshow("YOLO Detection", frame_q[-1])
+            if result_q:
+                cv2.imshow("YOLO Detection", result_q[-1])
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 stop_evt.set()
