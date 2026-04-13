@@ -15,7 +15,7 @@ i2nsf-security-policy:
             end: '80'
     action:
       packet-action:
-        ingress-action: drop
+        ingress-action: pass
 
 
 

@@ -7,7 +7,7 @@ import yaml  # 정책 YAML 읽기용
 # ---------------------------
 # Setting
 # ---------------------------
-IMO_BASE   = "http://192.168.50.165"
+IMO_BASE   = "http://192.168.50.231"
 CLOUD_BASE = "http://localhost"
 
 STREAM_URL = f"{IMO_BASE}:8000/video"
@@ -180,17 +180,18 @@ def send_cmd(linear, angular):
 # Thread 1. CaptureThread
 # ---------------------------
 def capture_loop():
+    print("[Capture] 시작")
+
     cap = cv2.VideoCapture(STREAM_URL)
     if not cap.isOpened():
-        print("[Capture] 스트림 오픈 실패")
-        stop_evt.set()
+        print(f"[Capture] 스트림 연결 실패: {STREAM_URL}")
         return
 
-    print("[Capture] 시작")
+    print("[Capture] 시작 (영상 캡처 전용)")
     while not stop_evt.is_set():
         ok, frame = cap.read()
         if ok:
-            frame_q.append(frame)
+            frame_q.append(frame) # 이제 infer_loop에 정상 공급됨
         else:
             time.sleep(0.005)
 
@@ -307,7 +308,6 @@ def infer_loop(model):
 
                 if 0 <= idx < len(ranges):
                     dist = ranges[idx]
-
                     if 0.02 < dist < 12.0:
                         if dist < best[0]:
                             best = (dist, {
@@ -550,7 +550,7 @@ if __name__ == "__main__":
     try:
         while not stop_evt.is_set():
             if frame_q:
-                cv2.imshow("YOLO Detection (Live)", frame_q[-1])
+                cv2.imshow("YOLO Detection", frame_q[-1])
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 stop_evt.set()

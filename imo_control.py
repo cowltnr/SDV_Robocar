@@ -38,7 +38,7 @@ class LimoController(Node):
     def __init__(self):
         super().__init__('imo_limo_controller')
 
-        self.pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        self.pub = self.create_publisher(Twist, '/sim/cmd_vel', 10)
         self.timer = self.create_timer(1.0 / PUBLISH_HZ, self._tick)
 
         self.get_logger().info(
