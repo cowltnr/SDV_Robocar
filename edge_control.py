@@ -1,13 +1,17 @@
 import cv2
 from ultralytics import YOLO
 import random, time, datetime, requests, base64, threading, queue, math
+import numpy as np
 from collections import deque
 import yaml  # 정책 YAML 읽기용
+
+from sensor.camera_fov import get_camera_hfov
+from sensor.lidar_length import get_lidar_length
 
 # ---------------------------
 # Setting
 # ---------------------------
-IMO_BASE   = "http://192.168.50.231"
+IMO_BASE   = "http://192.168.50.17"
 CLOUD_BASE = "http://localhost"
 
 STREAM_URL = f"{IMO_BASE}:8000/video"
@@ -30,11 +34,13 @@ JPEG_QUALITY  = 70
 TIMEOUT_GET   = 0.3
 TIMEOUT_POST  = 0.5
 
+# Camera Setting
+CAMERA_FOV_DEG = get_camera_hfov()
+
 # Lidar Setting
 LIDAR_HZ       = 10.0
 LIDAR_TO       = 0.5
-LIDAR_LEN      = 401
-CAMERA_FOV_DEG = 71.0
+LIDAR_LEN = get_lidar_length('/sim/scan')
 
 # GPS 근사 변환 기준
 BASE_LAT = 37.501000
@@ -44,7 +50,7 @@ BASE_LON = 127.036000
 # 회피 시퀀스 설정
 # ---------------------------
 # 첫 stop 발생 기준 거리
-STOP_TRIGGER = 0.7
+STOP_TRIGGER = 2.0
 
 # S-curve parameter
 K_TIME = 2.0        # k초
@@ -52,8 +58,7 @@ TURN_ANG = 0.35     # n도 조향(rad/s)
 STRAIGHT_ANG = 0.0
 
 # 회피 중 전진 속도
-FORWARD_SPEED = 0.2
-
+FORWARD_SPEED = 0.8
 
 def fake_gps_from_odom(x_m, y_m):
     return {
@@ -87,7 +92,7 @@ def allow_send_distance():
 # 전역 공유 구조
 # ---------------------------
 frame_q   = deque(maxlen=1)
-result_q  = deque(maxlen=1) 
+result_q  = deque(maxlen=1)
 send_q    = queue.Queue(maxsize=10)
 
 odom_lock = threading.Lock()
@@ -176,6 +181,75 @@ def send_cmd(linear, angular):
         )
     except Exception as e:
         print("[CMD ERROR]", e)
+
+
+
+# ---------------------------
+# Camera-LiDAR 매핑 보조 함수
+# ---------------------------
+def pixel_x_to_angle(x_px, image_w, camera_fov_deg):
+    """
+    이미지의 x 좌표를 카메라 기준 수평 각도(rad)로 변환
+    - 화면 중앙: 0 rad
+    - 화면 왼쪽: 음수
+    - 화면 오른쪽: 양수
+    """
+    fov_rad = math.radians(camera_fov_deg)
+    ratio = float(x_px) / float(image_w)
+    return (ratio - 0.5) * fov_rad
+
+
+def bbox_short_median_distance(bbox, image_w, angle_min, angle_max, angle_inc, ranges,
+                               camera_fov_deg, max_range=12.0,
+                               num_samples=100, short_k=3):
+    """
+    사람 bbox 내부의 여러 x 좌표를 LiDAR와 매핑한 뒤,
+    짧은 유효 거리 몇 개 중 median 값을 최종 거리로 사용한다.
+
+    이유:
+    - bbox 중심 1점만 사용하면 사람 대신 배경/벽을 읽는 경우가 많다.
+    - bbox 내부 여러 x를 함께 보면 사람 몸에 해당하는 LiDAR 빔을 잡을 확률이 높아진다.
+    - 단, 최소값 1개만 쓰면 노이즈에 취약하므로 짧은 값 몇 개의 median을 사용한다.
+    """
+    if not ranges or image_w <= 0:
+        return None, None, 0
+
+    x1, y1, x2, y2 = bbox
+
+    bbox_width = max(1, x2 - x1 + 1)
+    sample_count = int(min(num_samples, max(5, bbox_width)))
+    xs = np.linspace(x1, x2, sample_count).astype(int)
+
+    # 현재 ranges 길이에 맞춰 각도 배열 생성
+    #angles = np.linspace(angle_min, angle_max, len(ranges))
+
+    valid_pairs = []  # (distance, idx)
+
+    for x in xs:
+        angle_global = pixel_x_to_angle(x, image_w, camera_fov_deg)
+
+        # angle -> lidar index 직접 계산
+        idx = int(round((angle_global - angle_min) / angle_inc))
+
+        if 0 <= idx < len(ranges):
+            dist = float(ranges[idx])
+            if 0.02 < dist < max_range:
+                valid_pairs.append((dist, idx))
+
+    if not valid_pairs:
+        return None, None, 0
+
+    valid_pairs.sort(key=lambda x: x[0])
+    k = min(short_k, len(valid_pairs))
+    short_group = valid_pairs[:k]
+
+    short_dists = [d for d, _ in short_group]
+    short_idxs = [i for _, i in short_group]
+
+    stable_dist = float(np.median(short_dists))
+    stable_idx = int(np.median(short_idxs))
+    return stable_dist, stable_idx, len(valid_pairs)
+
 
 
 # ---------------------------
@@ -289,8 +363,6 @@ def infer_loop(model):
 
         if angle_min is not None and angle_inc is not None and len(ranges) > 0 and len(detected) > 0:
             image_w = frame.shape[1]
-            fov_rad = math.radians(CAMERA_FOV_DEG)
-            fov_half = fov_rad / 2.0
             best = (float("inf"), None)
 
             for obj in detected:
@@ -301,27 +373,39 @@ def infer_loop(model):
                 x1, y1, x2, y2 = obj["bbox"]
                 cx = (x1 + x2) // 2
 
-                ratio = cx / image_w
-                angle_rel = (ratio - 0.5) * fov_rad
+                # bbox 중심 각도는 로그/디버깅 용도로만 사용
+                center_angle = pixel_x_to_angle(cx, image_w, CAMERA_FOV_DEG)
 
-                if abs(angle_rel) > fov_half:
+                # bbox 내부 여러 x 좌표를 LiDAR와 매핑한 뒤,
+                # 짧은 유효 거리 몇 개의 median을 최종 거리로 사용
+                dist, rep_idx, used_points = bbox_short_median_distance(
+                    bbox=obj["bbox"],
+                    image_w=image_w,
+                    angle_min=angle_min,
+                    angle_max=angle_max,
+                    angle_inc=angle_inc,
+                    ranges=ranges,
+                    camera_fov_deg=CAMERA_FOV_DEG,
+                    max_range=12.0,
+                    num_samples=100,
+                    short_k=3
+                )
+
+                if dist is None:
                     continue
 
-                angle_global = angle_rel
-                angles = np.linspace(angle_min, angle_max, len(ranges))
-                idx = int(np.argmin(np.abs(angles - angle_global)))
-                dist = ranges[idx]
-                if 0.02 < dist < 12.0:
-                    if dist < best[0]:
-                        best = (dist, {
-                            "class": obj["class"],
-                            "conf": obj["conf"],
-                            "bbox": obj["bbox"],
-                            "distance": round(dist, 3),
-                            "angle": round(math.degrees(angle_global), 2),
-                            "center_x": cx,
-                            "center_y": (y1 + y2) // 2
-                        })
+                if dist < best[0]:
+                    best = (dist, {
+                        "class": obj["class"],
+                        "conf": obj["conf"],
+                        "bbox": obj["bbox"],
+                        "distance": round(dist, 3),
+                        "angle": round(math.degrees(center_angle), 2),
+                        "center_x": cx,
+                        "center_y": (y1 + y2) // 2,
+                        "lidar_idx": rep_idx,
+                        "lidar_points_used": used_points
+                    })
 
             if best[1] is not None:
                 closest_person = best[1]
@@ -443,11 +527,11 @@ def infer_loop(model):
                     {"class": o["class"], "conf": o["conf"], "bbox": o["bbox"]}
                     for o in detected
                 ],
-                "image": img_b64,
                 "lidar_available": angle_min is not None and angle_inc is not None and len(ranges) > 0,
                 "closest_person": closest_person,
                 "avoid_active": avoid_state["active"],
-                "avoid_stage": avoid_state["stage"]
+                "avoid_stage": avoid_state["stage"],
+                "image": img_b64
             }
 
             try:
@@ -503,18 +587,15 @@ def lidar_loop():
             if r.status_code == 200:
                 data = r.json()
                 angle_min = data.get("angle_min")
-                angle_max = data.get("angle_max") 
+                angle_max = data.get("angle_max")
                 angle_inc = data.get("angle_increment")
                 ranges    = data.get("ranges", [])
 
-                if len(ranges) < LIDAR_LEN:
-                    ranges = ranges + [0.0] * (LIDAR_LEN - len(ranges))
-                elif len(ranges) > LIDAR_LEN:
-                    ranges = ranges[:LIDAR_LEN]
-
+                # 실제로 들어온 LiDAR ranges를 그대로 사용한다.
+                # 강제로 자르거나 0으로 패딩하면 카메라-LiDAR 각도 매핑이 어긋날 수 있다.
                 with lidar_lock:
                     lidar_cache["angle_min"]       = angle_min
-                    lidar_cache["angle_max"]       = angle_max 
+                    lidar_cache["angle_max"]       = angle_max
                     lidar_cache["angle_increment"] = angle_inc
                     lidar_cache["ranges"]          = ranges
         except Exception:

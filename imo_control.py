@@ -11,7 +11,7 @@ from geometry_msgs.msg import Twist
 # 설정값
 # -------------------------
 STOP_THRESHOLD   = 1.0   # 이 거리 이하면 강제 정지
-DEFAULT_SPEED    = 0.2   # 기본 직진 속도
+DEFAULT_SPEED    = 0.8   # 기본 직진 속도
 PUBLISH_HZ       = 10.0  # cmd_vel publish 주기
 
 
