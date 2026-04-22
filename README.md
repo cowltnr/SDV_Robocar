@@ -2,61 +2,84 @@
 <img width="1704" height="981" alt="IETF125 Framework" src="https://github.com/user-attachments/assets/75db8c0d-dac8-48ab-80e8-87d7655f2b8a" />
 
 ## Main steps
-**LIMO**<br/>
-- Run server<br/>
-- Stream camera<br/>
-- Scan LiDAR
-- Subscribe to /wheel/odom topic(from ```base_limo.launch.py```)<br/>
-- Subscribe to /scan topic(from ```ydlidar.launch.py```)<br/>
-+ Receive distance of closest person from Desktop to control the LIMO<br/>
-+ Collision avoidance scenario driving<br/>
-
-**Desktop**<br/>
+**Perception (Edge Server)**<br/>
 - Receive camera stream from LIMO<br/>
-- Extract class and bbox information from LIMO<br/>
-- Receive odometry data(pose, twist) from LIMO and compute GPS coordinates<br/>
-- Receive 2D LiDAR data(angle_min, angle_increment, ranges) from LIMO and compute Camera & LiDAR calibration<br/>
-- Decide the avoidance sequence<br/> (Example scenario: If the person is on the left → steer right *n* degrees for *k* seconds → steer left *n* degrees for *2k* seconds → steer right *n* degrees for *k* seconds → align wheels to *0* degrees and move forward.)<br/>
-+ POST distance & avoid state to LIMO<br/>
-
-
-**Kubernetes**<br/>
-- Run server<br/>
-- Send User intent to edge_controller<br/>
-- Save JSON files & Images in real time (1s)<br/>
+- Receive odometry data (pose, twist) from LIMO<br/>
+- Receive 2D LiDAR data (angle_min, angle_increment, ranges) from LIMO<br/>
+- Perform object detection (YOLO) to extract class and bounding box information<br/>
+- Convert odometry to approximate GPS coordinates<br/>
+- Map image pixels to LiDAR angles using camera FOV<br/>
+- Compute object distance using Camera–LiDAR fusion<br/>
+- Generate structured perception output (objects, distance, position, sensor data)<br/>
 <br/>
 
-### 1. Run IMO server (LIMO)
+**Decision (Edge Server)**<br/>
+- Analyze perception results (detected objects and distances)<br/>
+- Identify closest obstacle (e.g., person) and evaluate collision risk<br/>
+- Determine stop condition based on distance threshold<br/>
+- Plan avoidance sequence based on object position (left/right)<br/>
+- Example scenario:<br/>
+    If the person is on the left → steer right *n* degrees for *k* seconds
+    → steer left *n* degrees for *2k* seconds
+    → steer right *n* degrees for *k* seconds
+    → align wheels to 0 degrees and move forward
+- Manage avoidance state (stage, direction, timing)<br/>
+<br/>
+
+**Control (Edge Server)**<br/>
+- Receive distance from Edge server<br/>
+- Apply emergency stop if distance is below threshold<br/>
+- Receive velocity commands (linear_x, angular_z) from Edge server<br/>
+- Publish control commands to `/cmd_vel` topic<br/>
+- Execute real-time motion control (forward, steering, stop)<br/> 
+<br/>
+
+**VLM Server**<br/>
+- Receive perception outputs (image, objects, distance)<br/>
+- Understand high-level context (e.g., blocked path, multi-agent situation)<br/>
+- Perform intent-aware reasoning<br/>
+- Generate alternative navigation strategies<br/>
+- Provide decision suggestions to Decision module<br/> 
+<br/>
+
+**Cloud Server (Kubernetes)**<br/>
+- Receive inference results (JSON + image) from Edge server<br/>
+- Save logs in real time for monitoring and analysis<br/>
+- Send user intent (e.g., navigation goal) to Edge server<br/>
+- Manage policy (pass/drop) to enable or disable control signals<br/>
+- Support system scalability and centralized management<br/>
+<br/>
+
+
+### 1. Run IMO server
 ```
-$ ros2 launch limo_base limo_base.launch.py    # terminal 1
-$ ros2 launch ydlidar_ros2_driver ydlidar.launch.py   # terminal 2
-$ python imo_server_lidar.py    # terminal 3
+$ python imo_server_lidar.py
 ```
 
-### 2. Run k8s server (Kubernetes)
+### 2. Run k8s server (Cloud)
 ```
 $ python k8s_server.py
 ```
 
-### 3. Intent Sender server (Kubernetes)
+### 3. Intent Sender server (Cloud)
 ```
 $ python intent_server.py
 # received_policy.yaml: pass/drop to activate or deactivate stop/detour function
 ```
 
-### 4. YOLO Detection + Odometry + 2D Lidar (Desktop)
+### 4. YOLO Detection + Odometry + 2D Lidar
 ```
 $ python edge_control.py
 ```
 
-### 5. Control IMO (LIMO)
+### 5. Control IMO
 ```
-$ python imo_control.py    # terminal 4
+$ python imo_control.py
 ```
 
 <br/>
 
-- YOLO Detection (Desktop)<br/>
+- YOLO Detection<br/>
 ![img.png](readme/images.png)
 </br></br>
 
@@ -64,9 +87,6 @@ $ python imo_control.py    # terminal 4
 ![img_1.png](readme/json.png)
 <br/><br/>
 
-- Demonstration Video Clip<br/>
-[URL] https://youtu.be/589GNGIX3fk?si=oZB06Nk9Y8ozSOLz
-</br></br>
 
 ## Data classes
 **yolov8s :**<br/>
