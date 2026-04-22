@@ -6,6 +6,7 @@ ROS2 Humble
 Nvidia Isaac Sim 4.5.0
 python 3.10
 ```
+<br/>
 
 ## Main Figure
 <img width="1920" height="1080" alt="Figure2" src="https://github.com/user-attachments/assets/037807dc-084b-419d-a8dd-f2d15ea3444f" />
