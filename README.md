@@ -1,7 +1,7 @@
+## Main Figure
+<img width="1920" height="1080" alt="Figure2" src="https://github.com/user-attachments/assets/037807dc-084b-419d-a8dd-f2d15ea3444f" />
+<br/><br/>
 
-<img width="1704" height="981" alt="IETF125 Framework" src="https://github.com/user-attachments/assets/75db8c0d-dac8-48ab-80e8-87d7655f2b8a" />
-
-## Main steps
 **Perception (Edge Server)**<br/>
 - Receive camera stream from LIMO<br/>
 - Receive odometry data (pose, twist) from LIMO<br/>
@@ -50,6 +50,7 @@
 - Support system scalability and centralized management<br/>
 <br/>
 
+## Execution Flow
 
 ### 1. Run IMO server
 ```
@@ -80,11 +81,11 @@ $ python imo_control.py
 <br/>
 
 - YOLO Detection<br/>
-![img.png](readme/images.png)
+<img width="1280" height="720" alt="image" src="https://github.com/user-attachments/assets/f2178f21-3236-4fea-9ce0-4e4b7cd9a30f" />
 </br></br>
 
 - Save files in real time (Kubernetes)</br>
-![img_1.png](readme/json.png)
+<img width="993" height="377" alt="image" src="https://github.com/user-attachments/assets/99f8f2a2-2070-4c68-9ca9-565084ef098e" />
 <br/><br/>
 
 
