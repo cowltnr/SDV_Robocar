@@ -43,6 +43,7 @@ def generate_frames():
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
+
 @app.route('/video')
 def video():
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
@@ -80,7 +81,7 @@ def ros_process(odom_q, lidar_q, image_q):
             super().__init__('robot_streamer')
             # --- Odometry 구독 (기본 QoS로 OK) ---
             self.create_subscription(Odometry, '/sim/odom', self.odom_callback, 10)
-            
+
             # --- Camera 구독 (기본 QoS로 OK) ---
             self.create_subscription(Image, '/sim/camera/color/image_raw', self.image_callback, 10)
 
@@ -121,7 +122,7 @@ def ros_process(odom_q, lidar_q, image_q):
             }
             if not lidar_q.full():
                 lidar_q.put(data)
-        
+
         def image_callback(self, msg):
             global latest_frame
             frame = bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
@@ -131,7 +132,6 @@ def ros_process(odom_q, lidar_q, image_q):
 
             if not image_q.full():
                 image_q.put(latest_frame)
-
 
     # --- ROS2 실행 ---
     rclpy.init()

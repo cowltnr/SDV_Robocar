@@ -57,11 +57,11 @@ $ python imo_control.py    # terminal 4
 <br/>
 
 - YOLO Detection (Desktop)<br/>
-![img.png](images.png)
+![img.png](readme/images.png)
 </br></br>
 
 - Save files in real time (Kubernetes)</br>
-![img_1.png](json.png)
+![img_1.png](readme/json.png)
 <br/><br/>
 
 - Demonstration Video Clip<br/>
