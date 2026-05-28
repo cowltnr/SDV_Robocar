@@ -24,6 +24,8 @@ avoid_state = {
     "stage": 0,
     "start_time": 0.0,
     "direction": 1,
+    "wp_mode": False,        # 현재 wp route 주행 중인지
+    "wp_selected": None,     # 선택된 wp 이름
 }
 
 last_stop_state = {"value": False}

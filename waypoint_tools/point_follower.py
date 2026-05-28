@@ -14,18 +14,32 @@ class RouteFollower(Node):
         super().__init__('route_follower')
 
         # ===== 설정 =====
-        self.cmd_vel_topic = '/sim/cmd_vel'   # 실제 LIMO면 '/cmd_vel'로 바꾸기
+        self.cmd_vel_topic = '/sim/cmd_vel'  # 실제 LIMO면 '/cmd_vel'로 바꾸기
         self.robot_frame = 'base_link'
         self.odom_frame = 'odom'
 
-        self.goal_tolerance = 0.25       # waypoint 도착 판단 거리 [m]
-        self.linear_k = 0.45             # 직진 속도 gain
-        self.angular_k = 1.2             # 회전 속도 gain
+        self.goal_tolerance = 0.4  # waypoint 도착 판단 거리 [m]
+        self.linear_k = 2  # 직진 속도 gain
+        self.angular_k = 0.7  # 회전 속도 gain
 
-        self.max_linear = 1.0           # 최대 직진 속도
-        self.max_angular = 1.0           # 최대 회전 속도
+        self.max_linear = 2.0  # 최대 직진 속도
+        self.max_angular = 1.0  # 최대 회전 속도
 
-        self.heading_threshold = 0.35    # 방향 차이가 크면 회전 우선 [rad]
+        self.heading_threshold = 0.5  # 방향 차이가 크면 회전 우선 [rad]
+
+        self.goal_sub = self.create_subscription(
+            String,
+            '/intent_goal',
+            self.intent_goal_callback,
+            10
+        )
+
+        self.nav_stop_sub = self.create_subscription(
+            String,
+            '/navigation_stop',
+            self.navigation_stop_callback,
+            10
+        )
 
         # ===== wp route 정의 =====
         self.routes = {
@@ -100,11 +114,71 @@ class RouteFollower(Node):
 
         self.active_route_name = route_name
         self.active_route = self.routes[route_name]
-        self.current_idx = 0
+
+        pose = self.get_robot_pose()
+
+        if pose is None:
+            self.get_logger().warn(
+                "Robot pose is not available. Start route from first waypoint."
+            )
+            self.current_idx = 0
+        else:
+            robot_x, robot_y, _ = pose
+
+            nearest_idx, nearest_dist = self.find_nearest_waypoint_idx(
+                self.active_route,
+                robot_x,
+                robot_y
+            )
+
+            if nearest_dist < self.goal_tolerance and nearest_idx < len(self.active_route) - 1:
+                self.current_idx = nearest_idx + 1
+            else:
+                self.current_idx = nearest_idx
+
+            self.get_logger().info(
+                f"Nearest waypoint selected: start_index={self.current_idx + 1}/"
+                f"{len(self.active_route)}, nearest_dist={nearest_dist:.2f} m"
+            )
+
         self.is_running = True
 
         self.get_logger().info(f"Selected route: {route_name}")
         self.get_logger().info(f"Total waypoints: {len(self.active_route)}")
+
+    def intent_goal_callback(self, msg):
+        try:
+            raw = msg.data.strip()
+            x_str, y_str = raw.split(",")
+            goal_x = float(x_str)
+            goal_y = float(y_str)
+
+        except Exception as e:
+            self.get_logger().warn(
+                f"Invalid intent goal: {msg.data}. Use 'x,y'. error={e}"
+            )
+            self.stop_robot()
+            return
+
+        self.active_route_name = "intent_goal"
+        self.active_route = [(goal_x, goal_y)]
+        self.current_idx = 0
+        self.is_running = True
+
+        self.get_logger().info(
+            f"Intent goal received: ({goal_x}, {goal_y})"
+        )
+
+    def navigation_stop_callback(self, msg):
+        command = msg.data.strip()
+
+        if command == "stop":
+            self.get_logger().warn("Navigation stopped by obstacle detection.")
+            self.stop_robot()
+            self.is_running = False
+
+        elif command == "resume":
+            self.get_logger().info("Navigation resume command received.")
 
     def get_robot_pose(self):
         try:
@@ -139,6 +213,21 @@ class RouteFollower(Node):
     def clamp(self, value, min_value, max_value):
         return max(min(value, max_value), min_value)
 
+    def find_nearest_waypoint_idx(self, route, robot_x, robot_y):
+        min_dist = float("inf")
+        nearest_idx = 0
+
+        for i, (wx, wy) in enumerate(route):
+            dx = wx - robot_x
+            dy = wy - robot_y
+            dist = math.sqrt(dx * dx + dy * dy)
+
+            if dist < min_dist:
+                min_dist = dist
+                nearest_idx = i
+
+        return nearest_idx, min_dist
+
     def control_loop(self):
         if not self.is_running:
             return
@@ -172,7 +261,10 @@ class RouteFollower(Node):
                 f"of {self.active_route_name}"
             )
             self.current_idx += 1
-            self.stop_robot()
+
+            if self.current_idx >= len(self.active_route):
+                self.stop_robot()
+
             return
 
         cmd = Twist()
@@ -192,9 +284,9 @@ class RouteFollower(Node):
                 self.max_linear
             )
             cmd.angular.z = self.clamp(
-                self.angular_k * yaw_error,
-                -self.max_angular,
-                self.max_angular
+                0.5 * self.angular_k * yaw_error,
+                -0.5,
+                0.5
             )
 
         self.cmd_pub.publish(cmd)

@@ -17,6 +17,8 @@ app = Flask(__name__)
 bridge = CvBridge()
 frame_lock = threading.Lock()
 latest_frame = None
+latest_lidar = None
+lidar_shared_lock = None
 
 # --- 공유 큐 ---
 odom_queue = multiprocessing.Queue(maxsize=1)
@@ -62,18 +64,25 @@ def get_odometry():
 # --- (3) 최신 LiDAR 정보 ---
 @app.route('/lidar')
 def get_ydlidar():
-    try:
-        data = lidar_queue.get(timeout=1.0)
-        return jsonify(data)
-    except queue.Empty:
-        return jsonify({"error": "No LiDAR data"}), 204
+    global latest_lidar, lidar_shared_lock
+
+    if latest_lidar is None:
+        return jsonify({"error": "LiDAR shared storage not initialized"}), 204
+
+    with lidar_shared_lock:
+        if not latest_lidar.get("ready", False):
+            return jsonify({"error": "No LiDAR data"}), 204
+
+        data = dict(latest_lidar)
+
+    return jsonify(data)
 
 
 # ============================
 # ROS2 프로세스 정의
 # ============================
 
-def ros_process(odom_q, lidar_q, image_q):
+def ros_process(odom_q, lidar_q, image_q, latest_lidar_shared, lidar_lock):
     """ROS2 노드: Odometry + LiDAR + Camera 동시 구독"""
 
     class RobotStreamer(Node):
@@ -114,14 +123,18 @@ def ros_process(odom_q, lidar_q, image_q):
 
         def lidar_callback(self, msg):
             data = {
+                "ready": True,
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "stamp_sec": time.time(),
                 "angle_min": msg.angle_min,
                 "angle_max": msg.angle_max,
                 "angle_increment": msg.angle_increment,
                 "ranges": list(msg.ranges)
             }
-            if not lidar_q.full():
-                lidar_q.put(data)
+
+            with lidar_lock:
+                latest_lidar_shared.clear()
+                latest_lidar_shared.update(data)
 
         def image_callback(self, msg):
             global latest_frame
@@ -146,7 +159,18 @@ def ros_process(odom_q, lidar_q, image_q):
 # ============================
 
 if __name__ == "__main__":
-    ros_proc = multiprocessing.Process(target=ros_process, args=(odom_queue, lidar_queue, image_queue))
+    manager = multiprocessing.Manager()
+
+    latest_lidar = manager.dict()
+    latest_lidar["ready"] = False
+
+    lidar_shared_lock = manager.Lock()
+
+    ros_proc = multiprocessing.Process(
+        target=ros_process,
+        args=(odom_queue, lidar_queue, image_queue, latest_lidar, lidar_shared_lock)
+    )
+
     ros_proc.start()
     print("[INFO] Flask + ROS2 병렬 실행 시작")
 

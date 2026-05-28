@@ -20,13 +20,13 @@ class PurePursuitFollower(Node):
 
         # ===== Pure Pursuit 설정 =====
         self.lookahead_distance = 1.0      # 앞을 얼마나 볼지 [m]
-        self.goal_tolerance = 0.35         # 마지막 목표 도착 판단 거리 [m]
+        self.goal_tolerance = 0.4          # 마지막 목표 도착 판단 거리 [m]
 
-        self.max_linear = 1.5             # 최대 직진 속도
+        self.max_linear = 1.5              # 최대 직진 속도
         self.min_linear = 0.12             # 최소 직진 속도
         self.max_angular = 0.9             # 최대 회전 속도
 
-        self.linear_speed = 1.0           # 기본 직진 속도
+        self.linear_speed = 1.0            # 기본 직진 속도
         self.angular_k = 1.4               # 회전 gain
 
         # 방향이 많이 틀어졌을 때 속도 줄이는 정도
@@ -82,16 +82,33 @@ class PurePursuitFollower(Node):
         self.active_route = []
         self.is_running = False
 
-        # 현재 경로 진행 인덱스
+        # 현재 경로 진행 segment index
         self.closest_segment_idx = 0
 
         # ===== ROS pub/sub =====
         self.cmd_pub = self.create_publisher(Twist, self.cmd_vel_topic, 10)
 
+        # Mock VLM 또는 edge_control.py가 선택한 wp 수신
         self.route_sub = self.create_subscription(
             String,
             '/selected_route',
             self.selected_route_callback,
+            10
+        )
+
+        # intent_server 또는 수동 명령으로 들어오는 goal point 수신
+        self.goal_sub = self.create_subscription(
+            String,
+            '/intent_goal',
+            self.intent_goal_callback,
+            10
+        )
+
+        # 장애물 감지 시 edge_control.py가 보내는 정지 명령 수신
+        self.nav_stop_sub = self.create_subscription(
+            String,
+            '/navigation_stop',
+            self.navigation_stop_callback,
             10
         )
 
@@ -102,8 +119,11 @@ class PurePursuitFollower(Node):
         self.timer = self.create_timer(0.05, self.control_loop)  # 20 Hz
 
         self.get_logger().info("PurePursuitFollower started.")
-        self.get_logger().info("Publish wp1/wp2/wp3 to /selected_route.")
+        self.get_logger().info("/intent_goal: 'x,y' | /selected_route: wp1/wp2/wp3 | /navigation_stop: stop/resume")
 
+    # =========================
+    # Topic callbacks
+    # =========================
     def selected_route_callback(self, msg):
         route_name = msg.data.strip()
 
@@ -114,16 +134,94 @@ class PurePursuitFollower(Node):
             return
 
         self.active_route_name = route_name
-        self.active_route = self.routes[route_name]
-        self.closest_segment_idx = 0
-        self.is_running = True
+        self.active_route = list(self.routes[route_name])
 
+        # 현재 위치에서 가장 가까운 segment부터 시작
+        self.closest_segment_idx = 0
+        pose = self.get_robot_pose()
+        if pose is None:
+            self.get_logger().warn("Robot pose is not available. Start route from first segment.")
+            self.closest_segment_idx = 0
+        else:
+            robot_x, robot_y, _ = pose
+            robot_pos = (robot_x, robot_y)
+            nearest_idx, nearest_proj, nearest_t = self.find_closest_segment(robot_pos)
+            self.closest_segment_idx = nearest_idx
+            self.get_logger().info(
+                f"Nearest segment selected: segment={nearest_idx + 1}/{len(self.active_route) - 1}, "
+                f"projection=({nearest_proj[0]:.2f}, {nearest_proj[1]:.2f}), t={nearest_t:.2f}"
+            )
+
+        self.is_running = True
         self.prev_linear = 0.0
         self.prev_angular = 0.0
 
         self.get_logger().info(f"Selected route: {route_name}")
         self.get_logger().info(f"Route points: {len(self.active_route)}")
 
+    def intent_goal_callback(self, msg):
+        try:
+            raw = msg.data.strip()
+            x_str, y_str = raw.split(",")
+            goal_x = float(x_str)
+            goal_y = float(y_str)
+        except Exception as e:
+            self.get_logger().warn(
+                f"Invalid intent goal: {msg.data}. Use 'x,y'. error={e}"
+            )
+            self.stop_robot()
+            self.is_running = False
+            return
+
+        pose = self.get_robot_pose()
+        if pose is None:
+            self.get_logger().warn("Robot pose is not available. Cannot create pure pursuit route to intent goal.")
+            self.stop_robot()
+            self.is_running = False
+            return
+
+        robot_x, robot_y, _ = pose
+
+        # Pure Pursuit는 최소 2개 점이 필요하므로 현재 위치 -> goal로 route 생성
+        self.active_route_name = "intent_goal"
+        self.active_route = [
+            (robot_x, robot_y),
+            (goal_x, goal_y),
+        ]
+        self.closest_segment_idx = 0
+        self.is_running = True
+
+        self.prev_linear = 0.0
+        self.prev_angular = 0.0
+
+        self.get_logger().info(
+            f"Intent goal received: ({goal_x}, {goal_y}), start=({robot_x:.2f}, {robot_y:.2f})"
+        )
+
+    def navigation_stop_callback(self, msg):
+        command = msg.data.strip()
+
+        if command == "stop":
+            self.get_logger().warn("Navigation stopped by obstacle detection.")
+            self.stop_robot()
+            self.is_running = False
+
+        elif command == "resume":
+            self.get_logger().info("Navigation resume command received.")
+            # resume은 기존 active_route가 남아 있을 때만 다시 시작
+            if len(self.active_route) >= 2:
+                self.is_running = True
+                self.prev_linear = 0.0
+                self.prev_angular = 0.0
+            else:
+                self.get_logger().warn("No active route to resume.")
+
+        else:
+            self.get_logger().warn(f"Unknown navigation command: {command}")
+
+    # =========================
+    # Utility functions
+    # =========================
     def get_robot_pose(self):
         try:
             tf = self.tf_buffer.lookup_transform(
@@ -218,7 +316,7 @@ class PurePursuitFollower(Node):
         return best_idx, best_proj, best_t
 
     def get_lookahead_point(self, robot_pos):
-        seg_idx, proj, t = self.find_closest_segment(robot_pos)
+        seg_idx, proj, _ = self.find_closest_segment(robot_pos)
 
         remaining = self.lookahead_distance
 
@@ -244,6 +342,9 @@ class PurePursuitFollower(Node):
         # 경로 끝까지 lookahead를 못 채우면 마지막 점 반환
         return self.active_route[-1]
 
+    # =========================
+    # Main control loop
+    # =========================
     def control_loop(self):
         if not self.is_running:
             return
