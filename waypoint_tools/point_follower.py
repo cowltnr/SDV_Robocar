@@ -1,12 +1,10 @@
 import math
-
 import rclpy
 from rclpy.node import Node
-
 from std_msgs.msg import String
 from geometry_msgs.msg import Twist
-
 import tf2_ros
+from waypoint_routes.routes import ROUTES, VALID_WPS
 
 
 class RouteFollower(Node):
@@ -27,12 +25,12 @@ class RouteFollower(Node):
 
         self.heading_threshold = 0.5  # 방향 차이가 크면 회전 우선 [rad]
 
-        self.goal_sub = self.create_subscription(
+        '''self.goal_sub = self.create_subscription(
             String,
             '/intent_goal',
             self.intent_goal_callback,
             10
-        )
+        )'''
 
         self.nav_stop_sub = self.create_subscription(
             String,
@@ -42,44 +40,7 @@ class RouteFollower(Node):
         )
 
         # ===== wp route 정의 =====
-        self.routes = {
-            "wp1": [
-                (9.0, 5.0),
-                (11.0, 5.0),
-                (13.0, 5.0),
-                (15.0, 5.0),
-                (17.0, 5.0),
-                (17.0, 3.0),
-                (17.0, 2.0),
-                (17.0, 0.0),
-                (19.0, 0.0),
-                (21.0, 0.0),
-                (21.0, 1.0),
-            ],
-            "wp2": [
-                (9.0, 0.0),
-                (11.0, 0.0),
-                (13.0, 0.0),
-                (15.0, 0.0),
-                (17.0, 0.0),
-                (19.0, 0.0),
-                (21.0, 0.0),
-                (21.0, 1.0),
-            ],
-            "wp3": [
-                (9.0, -5.0),
-                (11.0, -5.0),
-                (13.0, -5.0),
-                (15.0, -5.0),
-                (17.0, -5.0),
-                (19.0, -5.0),
-                (21.0, -5.0),
-                (21.0, -3.0),
-                (21.0, -2.0),
-                (21.0, 0.0),
-                (21.0, 1.0),
-            ],
-        }
+        self.routes = ROUTES
 
         self.active_route_name = None
         self.active_route = []
@@ -102,7 +63,7 @@ class RouteFollower(Node):
         self.timer = self.create_timer(0.05, self.control_loop)  # 20Hz
 
         self.get_logger().info("RouteFollower started.")
-        self.get_logger().info("Publish route name to /selected_route: wp1, wp2, or wp3")
+        self.get_logger().info("Publish route name to /selected_route: wp1, wp2, wp3, wp4, or wp5")
 
     def selected_route_callback(self, msg):
         route_name = msg.data.strip()
@@ -146,7 +107,7 @@ class RouteFollower(Node):
         self.get_logger().info(f"Selected route: {route_name}")
         self.get_logger().info(f"Total waypoints: {len(self.active_route)}")
 
-    def intent_goal_callback(self, msg):
+    '''def intent_goal_callback(self, msg):
         try:
             raw = msg.data.strip()
             x_str, y_str = raw.split(",")
@@ -167,7 +128,7 @@ class RouteFollower(Node):
 
         self.get_logger().info(
             f"Intent goal received: ({goal_x}, {goal_y})"
-        )
+        )'''
 
     def navigation_stop_callback(self, msg):
         command = msg.data.strip()

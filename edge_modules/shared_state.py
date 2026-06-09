@@ -24,9 +24,21 @@ avoid_state = {
     "stage": 0,
     "start_time": 0.0,
     "direction": 1,
-    "wp_mode": False,        # 현재 wp route 주행 중인지
-    "wp_selected": None,     # 선택된 wp 이름
+
+    # waypoint / VLM 상태
+    "wp_mode": False,
+    "wp_selected": None,
+    "waiting_vlm": False,
+    "vlm_reason": None,
+    "last_trigger_time": 0.0,
 }
 
 last_stop_state = {"value": False}
 last_dist_sent = {"t": 0.0, "d": None}
+
+intent_state = {
+    "goal": None,
+    "selected_wp": None,
+    "valid": False,
+    "feedback": None,
+}

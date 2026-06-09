@@ -1,13 +1,10 @@
 import math
-
 import rclpy
 from rclpy.node import Node
-
 from std_msgs.msg import String
 from geometry_msgs.msg import Twist
-
 import tf2_ros
-
+from waypoint_routes.routes import ROUTES, VALID_WPS
 
 class PurePursuitFollower(Node):
     def __init__(self):
@@ -39,44 +36,7 @@ class PurePursuitFollower(Node):
         self.max_angular_step = 0.08
 
         # ===== route 정의 =====
-        self.routes = {
-            "wp1": [
-                (9.0, 5.0),
-                (11.0, 5.0),
-                (13.0, 5.0),
-                (15.0, 5.0),
-                (17.0, 5.0),
-                (17.0, 3.0),
-                (17.0, 2.0),
-                (17.0, 0.0),
-                (19.0, 0.0),
-                (21.0, 0.0),
-                (21.0, 1.0),
-            ],
-            "wp2": [
-                (9.0, 0.0),
-                (11.0, 0.0),
-                (13.0, 0.0),
-                (15.0, 0.0),
-                (17.0, 0.0),
-                (19.0, 0.0),
-                (21.0, 0.0),
-                (21.0, 1.0),
-            ],
-            "wp3": [
-                (9.0, -5.0),
-                (11.0, -5.0),
-                (13.0, -5.0),
-                (15.0, -5.0),
-                (17.0, -5.0),
-                (19.0, -5.0),
-                (21.0, -5.0),
-                (21.0, -3.0),
-                (21.0, -2.0),
-                (21.0, 0.0),
-                (21.0, 1.0),
-            ],
-        }
+        self.routes = ROUTES
 
         self.active_route_name = None
         self.active_route = []
@@ -96,13 +56,20 @@ class PurePursuitFollower(Node):
             10
         )
 
+        self.route_goal_sub = self.create_subscription(
+            String,
+            '/selected_route_goal',
+            self.selected_route_goal_callback,
+            10
+        )
+
         # intent_server 또는 수동 명령으로 들어오는 goal point 수신
-        self.goal_sub = self.create_subscription(
+        '''self.goal_sub = self.create_subscription(
             String,
             '/intent_goal',
             self.intent_goal_callback,
             10
-        )
+        )'''
 
         # 장애물 감지 시 edge_control.py가 보내는 정지 명령 수신
         self.nav_stop_sub = self.create_subscription(
@@ -119,7 +86,7 @@ class PurePursuitFollower(Node):
         self.timer = self.create_timer(0.05, self.control_loop)  # 20 Hz
 
         self.get_logger().info("PurePursuitFollower started.")
-        self.get_logger().info("/intent_goal: 'x,y' | /selected_route: wp1/wp2/wp3 | /navigation_stop: stop/resume")
+        self.get_logger().info("/user_intent_goal -> intent_decision_node | wp1/wp2/wp3/wp4/wp5 | /navigation_stop: stop/resume")
 
     # =========================
     # Topic callbacks
@@ -159,7 +126,7 @@ class PurePursuitFollower(Node):
         self.get_logger().info(f"Selected route: {route_name}")
         self.get_logger().info(f"Route points: {len(self.active_route)}")
 
-    def intent_goal_callback(self, msg):
+    '''def intent_goal_callback(self, msg):
         try:
             raw = msg.data.strip()
             x_str, y_str = raw.split(",")
@@ -196,7 +163,7 @@ class PurePursuitFollower(Node):
 
         self.get_logger().info(
             f"Intent goal received: ({goal_x}, {goal_y}), start=({robot_x:.2f}, {robot_y:.2f})"
-        )
+        )'''
 
     def navigation_stop_callback(self, msg):
         command = msg.data.strip()
@@ -218,6 +185,82 @@ class PurePursuitFollower(Node):
 
         else:
             self.get_logger().warn(f"Unknown navigation command: {command}")
+
+    def selected_route_goal_callback(self, msg):
+        try:
+            raw = msg.data.strip()
+
+            route_part, goal_part = raw.split(";")
+            route_name = route_part.strip()
+
+            goal_x_str, goal_y_str = goal_part.split(",")
+            goal_x = float(goal_x_str.strip())
+            goal_y = float(goal_y_str.strip())
+
+        except Exception as e:
+            self.get_logger().warn(
+                f"Invalid /selected_route_goal format: {msg.data}. "
+                f"Use 'wp_name;x,y'. error={e}"
+            )
+            self.stop_robot()
+            self.is_running = False
+            return
+
+        if route_name not in self.routes:
+            self.get_logger().warn(f"Unknown route: {route_name}")
+            self.stop_robot()
+            self.is_running = False
+            return
+
+        full_route = self.routes[route_name]
+
+        cut_route, dist = self.cut_route_until_goal(
+            full_route,
+            goal_x,
+            goal_y,
+            tolerance=0.5
+        )
+
+        if cut_route is None:
+            self.get_logger().warn(
+                f"Goal ({goal_x}, {goal_y}) is not on route {route_name}. "
+                f"distance_to_route={dist:.3f}"
+            )
+            self.stop_robot()
+            self.is_running = False
+            return
+
+        pose = self.get_robot_pose()
+        if pose is None:
+            self.get_logger().warn("Robot pose is not available.")
+            self.stop_robot()
+            self.is_running = False
+            return
+
+        robot_x, robot_y, _ = pose
+
+        # Pure Pursuit는 최소 2개 점이 필요
+        if len(cut_route) < 2:
+            cut_route = [(robot_x, robot_y)] + cut_route
+
+        self.active_route_name = f"{route_name}_to_goal"
+        self.active_route = list(cut_route)
+
+        self.closest_segment_idx = 0
+        robot_pos = (robot_x, robot_y)
+        nearest_idx, nearest_proj, nearest_t = self.find_closest_segment(robot_pos)
+        self.closest_segment_idx = nearest_idx
+
+        self.is_running = True
+        self.prev_linear = 0.0
+        self.prev_angular = 0.0
+
+        self.get_logger().info(
+            f"Selected route with goal: {route_name} -> ({goal_x}, {goal_y})"
+        )
+        self.get_logger().info(
+            f"Trimmed route points: {len(self.active_route)}"
+        )
 
     # =========================
     # Utility functions

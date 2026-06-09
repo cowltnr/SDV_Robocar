@@ -1,25 +1,83 @@
 import base64
 import datetime
 import time
-
 import cv2
+import subprocess
+import requests
+import math
 
 from edge_modules.config import (
-    CMD_API,
-    DIST_API,
-    FORWARD_SPEED,
     INFER_HZ,
     JPEG_QUALITY,
-    K_TIME,
-    POLICY_FILE,
     SEND_INTERVAL,
-    STOP_TRIGGER,
-    STRAIGHT_ANG,
-    TURN_ANG,
+    ROUTE_SELECT_TRIGGER,
+    EMERGENCY_STOP_TRIGGER,
+    VLM_SELECT_API,
+    VALID_WPS,
 )
 from edge_modules.navigation_utils import bbox_short_median_distance, pixel_x_to_angle
-from edge_modules.robocar_api import send_cmd, send_distance_to_robocar
 
+def publish_string_topic(topic_name, data):
+    try:
+        subprocess.run(
+            [
+                "ros2", "topic", "pub", "--once",
+                topic_name,
+                "std_msgs/msg/String",
+                f"{{data: '{data}'}}"
+            ],
+            check=False
+        )
+        print(f"[ROS2 PUB] {topic_name} <- {data}")
+
+    except Exception as e:
+        print(f"[ROS2 PUB ERROR] {topic_name}: {e}")
+
+def request_wp_from_vlm(frame, closest_person, goal=(21.0, 1.0)):
+    ok, buf = cv2.imencode(
+        ".jpg",
+        frame,
+        [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY]
+    )
+    image_b64 = base64.b64encode(buf).decode("utf-8") if ok else None
+
+    payload = {
+        "image": image_b64,
+        "image_width": frame.shape[1],
+        "image_height": frame.shape[0],
+        "goal": list(goal),
+        "obstacle": closest_person,
+        "candidate_routes": VALID_WPS,
+        "instruction": "Select the safest waypoint route."
+    }
+
+    try:
+        response = requests.post(
+            VLM_SELECT_API,
+            json=payload,
+            timeout=8.0
+        )
+        response.raise_for_status()
+        result = response.json()
+
+        selected_wp = result.get("selected_wp", None)
+
+        if selected_wp not in VALID_WPS:
+            print(f"[VLM] invalid selected_wp={selected_wp}")
+            print("[VLM] 유효하지 않은 wp입니다. route를 선택하지 않고 정지 상태를 유지합니다.")
+            return None, f"invalid selected_wp: {selected_wp}"
+
+        print(
+            f"[VLM] selected_wp={selected_wp}, "
+            f"reason={result.get('reason')}"
+        )
+
+        return selected_wp, result.get("reason")
+
+    except Exception as e:
+        print(f"[VLM ERROR] {e}")
+        print("[VLM ERROR] VLM server 연결 실패. route를 선택하지 않고 정지 상태를 유지합니다.")
+        return None, f"vlm_error: {e}"
 
 def infer_loop(
     model,
@@ -41,6 +99,10 @@ def infer_loop(
     last_infer = 0.0
     last_send = time.time()
 
+    pending_vlm_request = False
+    pending_vlm_frame = None
+    pending_closest_person = None
+
     while not stop_evt.is_set():
         if not frame_q:
             time.sleep(0.005)
@@ -52,6 +114,56 @@ def infer_loop(
             continue
 
         frame = frame_q[-1].copy()
+
+        # =========================================================
+        # Pending VLM 처리
+        # 이전 loop에서 /navigation_stop을 먼저 보낸 뒤,
+        # 이번 loop에서 정지 상태로 VLM을 호출하고 route를 전달한다.
+        # =========================================================
+        if pending_vlm_request:
+            print("[VLM] 정지 상태에서 최적 waypoint를 선택하는 중입니다.")
+
+            selected_wp, reason = request_wp_from_vlm(
+                frame=pending_vlm_frame if pending_vlm_frame is not None else frame,
+                closest_person=pending_closest_person,
+                goal=(21.0, 1.0)
+            )
+
+            if selected_wp is None:
+                print(f"[VLM] route 선택 실패: {reason}")
+                print("[VLM] 로봇은 정지 상태를 유지합니다.")
+
+                avoid_state["wp_mode"] = False
+                avoid_state["wp_selected"] = None
+                avoid_state["vlm_reason"] = reason
+                avoid_state["waiting_vlm"] = False
+                avoid_state["active"] = False
+
+                pending_vlm_request = False
+                pending_vlm_frame = None
+                pending_closest_person = None
+
+                last_infer = now
+                continue
+
+            avoid_state["wp_mode"] = True
+            avoid_state["wp_selected"] = selected_wp
+            avoid_state["vlm_reason"] = reason
+            avoid_state["waiting_vlm"] = False
+            avoid_state["active"] = False
+
+            print(f"[VLM] 선택 완료: {selected_wp}, reason={reason}")
+
+            # VLM이 정상적으로 wp를 선택한 경우에만 route 전달
+            publish_string_topic("/selected_route", selected_wp)
+
+            pending_vlm_request = False
+            pending_vlm_frame = None
+            pending_closest_person = None
+
+            last_infer = now
+            continue
+
         result = model.predict(source=frame, conf=0.3, verbose=False)[0]
 
         boxes = result.boxes
@@ -123,7 +235,7 @@ def infer_loop(
                             "conf": obj["conf"],
                             "bbox": obj["bbox"],
                             "distance": round(dist, 3),
-                            "angle": round(__import__('math').degrees(center_angle), 2),
+                            "angle": round(math.degrees(center_angle), 2),
                             "center_x": cx,
                             "center_y": (y1 + y2) // 2,
                             "lidar_idx": rep_idx,
@@ -134,52 +246,61 @@ def infer_loop(
             if best[1] is not None:
                 closest_person = best[1]
 
-        if not avoid_state["active"]:
+        '''if not avoid_state["active"]:
             dist_to_send = closest_person["distance"] if closest_person else None
-            send_distance_to_robocar(dist_to_send, DIST_API, POLICY_FILE, last_dist_sent)
+            send_distance_to_robocar(dist_to_send, DIST_API, POLICY_FILE, last_dist_sent)'''
 
-        current_stop = bool(closest_person and closest_person["distance"] <= STOP_TRIGGER)
+        route_select_stop = (
+                closest_person is not None
+                and closest_person.get("distance") is not None
+                and closest_person["distance"] <= ROUTE_SELECT_TRIGGER
+        )
 
-        if (not last_stop_state["value"]) and current_stop and (not avoid_state["active"]):
+        emergency_stop = (
+                closest_person is not None
+                and closest_person.get("distance") is not None
+                and closest_person["distance"] <= EMERGENCY_STOP_TRIGGER
+        )
+
+        # 1) Emergency stop은 wp 주행 중에도 항상 살아 있어야 함
+        if emergency_stop:
+            print(f"[EMERGENCY STOP] closest_person={closest_person}")
+            publish_string_topic("/navigation_stop", "stop")
+
+        # 2) Route selection은 최초 1회만 VLM에게 요청
+        now_t = time.time()
+        cooldown_ok = (now_t - avoid_state.get("last_trigger_time", 0.0)) > 2.0
+
+        if (
+                route_select_stop
+                and cooldown_ok
+                and (not avoid_state.get("wp_mode", False))
+                and (not avoid_state.get("waiting_vlm", False))
+        ):
+            print(f"[ROUTE SELECT TRIGGER] closest_person={closest_person}")
+
+            # 1) 먼저 정지 상태로 전환
             avoid_state["active"] = True
-            avoid_state["stage"] = 1
-            avoid_state["start_time"] = time.time()
-            avoid_state["direction"] = 1 if closest_person["center_x"] < frame.shape[1] / 2 else -1
-            print("[AVOID] 시작")
+            avoid_state["waiting_vlm"] = True
+            avoid_state["last_trigger_time"] = now_t
 
-        last_stop_state["value"] = current_stop
+            print("\n[Obstacle] 사람이 route select threshold 이하로 접근했습니다.")
+            print("[Obstacle] LIMO를 즉시 정지합니다.")
+            publish_string_topic("/navigation_stop", "stop")
 
-        if avoid_state["active"]:
-            elapsed = time.time() - avoid_state["start_time"]
-            stage = avoid_state["stage"]
-            direction = avoid_state["direction"]
+            # 2) 이번 loop에서는 VLM 호출과 route publish를 하지 않음
+            #    다음 loop에서 정지 상태로 VLM server를 호출
+            pending_vlm_request = True
+            pending_vlm_frame = frame.copy()
+            pending_closest_person = dict(closest_person)
 
-            cv2.putText(frame, f"AVOID STAGE: {stage}", (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
-            cv2.putText(frame, f"DIR: {direction}", (20, 65), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+            print("[VLM] 다음 loop에서 정지 상태로 VLM server를 호출합니다.")
 
-            if stage == 1:
-                send_cmd(FORWARD_SPEED, TURN_ANG * direction, CMD_API)
-                if elapsed > K_TIME:
-                    avoid_state["stage"] = 2
-                    avoid_state["start_time"] = time.time()
-            elif stage == 2:
-                send_cmd(FORWARD_SPEED, -TURN_ANG * direction, CMD_API)
-                if elapsed > (2 * K_TIME):
-                    avoid_state["stage"] = 3
-                    avoid_state["start_time"] = time.time()
-            elif stage == 3:
-                send_cmd(FORWARD_SPEED, TURN_ANG * direction, CMD_API)
-                if elapsed > K_TIME:
-                    avoid_state["stage"] = 4
-                    avoid_state["start_time"] = time.time()
-            elif stage == 4:
-                send_cmd(FORWARD_SPEED, STRAIGHT_ANG, CMD_API)
-                if elapsed > K_TIME:
-                    avoid_state["active"] = False
-                    avoid_state["stage"] = 0
-                    avoid_state["start_time"] = 0.0
-                    send_cmd(0.0, 0.0, CMD_API)
-                    print("[AVOID] 종료")
+            last_stop_state["value"] = route_select_stop
+            last_infer = now
+            continue
+
+        last_stop_state["value"] = route_select_stop
 
         if now - last_send >= SEND_INTERVAL:
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -200,8 +321,16 @@ def infer_loop(
                 ],
                 "lidar_available": angle_min is not None and angle_inc is not None and len(ranges) > 0,
                 "closest_person": closest_person,
-                "avoid_active": avoid_state["active"],
-                "avoid_stage": avoid_state["stage"],
+                "avoid_active": avoid_state.get("active", False),
+                "avoid_stage": avoid_state.get("stage", 0),
+
+                "route_select_trigger": ROUTE_SELECT_TRIGGER,
+                "emergency_stop_trigger": EMERGENCY_STOP_TRIGGER,
+                "wp_mode": avoid_state.get("wp_mode", False),
+                "vlm_selected_wp": avoid_state.get("wp_selected"),
+                "vlm_reason": avoid_state.get("vlm_reason"),
+                "waiting_vlm": avoid_state.get("waiting_vlm", False),
+
                 "image": img_b64,
             }
 
@@ -217,3 +346,5 @@ def infer_loop(
         last_infer = now
 
     print("[Infer] 종료")
+
+

@@ -17,6 +17,8 @@ def lidar_loop(lidar_url, lidar_timeout, lidar_hz, stop_evt, lidar_lock, lidar_c
                     lidar_cache["angle_max"] = data.get("angle_max")
                     lidar_cache["angle_increment"] = data.get("angle_increment")
                     lidar_cache["ranges"] = data.get("ranges", [])
+            else:
+                print(f"[LiDAR] HTTP {response.status_code}: {response.text}")
         except Exception:
             pass
 

@@ -5,6 +5,7 @@
       <sourceFolder url="file://$MODULE_DIR$" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/IsaacSim/lib/python3.10/site-packages/isaacsim/exts/isaacsim.ros2.bridge/humble/rclpy" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/IsaacSim/lib/python3.10/site-packages/isaacsim/exts/isaacsim.ros2.bridge/humble/rclpy/action_msgs" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/waypoint_tools" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/IsaacSim" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.10 (SDV_Robocar)" jdkType="Python SDK" />
