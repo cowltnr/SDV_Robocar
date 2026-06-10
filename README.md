@@ -4,7 +4,8 @@ Camera–2D LiDAR fusion, obstacle-aware stopping, VLM-based route selection, an
 
 This repository implements an edge-to-cloud robotic perception pipeline. A robot-side Flask server streams camera, odometry, and 2D LiDAR data. An edge controller runs YOLOv8 detection, estimates person distance using lightweight Camera–2D LiDAR fusion, triggers emergency stopping or VLM-based route selection, and sends structured JSON/image logs to a cloud logging server. The cloud logs can be reused as shared situational information for other robots, allowing multiple robots to reference detected obstacles, VLM route decisions, and route-selection context.
 
-![Framework Overview](Figure2.png)
+<img width="1920" height="1080" alt="Figure2" src="https://github.com/user-attachments/assets/88e4196c-bbf9-4bfb-bd2e-1c5031375b75" />
+
 
 ---
 
@@ -142,6 +143,8 @@ EMERGENCY_STOP_TRIGGER = 1.2
 VALID_WPS = ["wp1", "wp2", "wp3", "wp4", "wp5"]
 VLM_SELECT_API = "http://localhost:8090/select_wp"
 ```
+<img width="400" height="300" alt="image" src="https://github.com/user-attachments/assets/02867eda-8c2e-4e76-b8d5-f7aadf9a5dad" />
+<img width="400" height="300" alt="image" src="https://github.com/user-attachments/assets/527635b9-66d1-4a56-923e-5532d4273311" />
 
 ## 5. VLM-Based Alternative Route Reasoning
 
