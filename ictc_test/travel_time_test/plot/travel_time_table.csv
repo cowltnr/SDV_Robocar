@@ -1,0 +1,86 @@
+Route,Point Follower [s],Pure Pursuit [s]
+# Travel Time Definition
+# Route set: wp1, wp2, wp3, wp4, wp5
+# Controllers compared: Point Follower and Pure Pursuit Follower
+# Start pose: identical for all trials
+# Same route, same velocity limits, same goal tolerance
+# Trajectory source: /sim/cmd_vel
+# Travel Time = elapsed time between first motion command and last motion command
+# Motion threshold: abs(linear.x) > 0.01 or abs(angular.z) > 0.01
+# Rosbag recording duration is NOT used
+# Unit: second [s]
+
+Route,Point Follower [s],Pure Pursuit [s]
+wp1,447.90,408.90
+wp2,119.35,156.60
+wp3,406.20,246.00
+wp4,353.55,301.35
+wp5,250.50,212.65
+# Travel Time Definition
+# Route set: wp1, wp2, wp3, wp4, wp5
+# Controllers compared: Point Follower and Pure Pursuit Follower
+# Start pose: identical for all trials
+# Same route, same velocity limits, same goal tolerance
+# Trajectory source: /sim/cmd_vel
+# Travel Time = elapsed time between first motion command and last motion command
+# Motion threshold: abs(linear.x) > 0.01 or abs(angular.z) > 0.01
+# Rosbag recording duration is NOT used
+# Unit: second [s]
+
+Route,Point Follower [s],Pure Pursuit [s]
+wp1,447.90,408.90
+wp2,119.35,156.60
+wp3,406.20,246.00
+wp4,353.55,301.35
+wp5,250.50,212.65
+# Travel Time Definition
+# Route set: wp1, wp2, wp3, wp4, wp5
+# Controllers compared: Point Follower and Pure Pursuit Follower
+# Start pose: identical for all trials
+# Same route, same velocity limits, same goal tolerance
+# Trajectory source: /sim/cmd_vel
+# Travel Time = elapsed time between first motion command and last motion command
+# Motion threshold: abs(linear.x) > 0.01 or abs(angular.z) > 0.01
+# Rosbag recording duration is NOT used
+# Unit: second [s]
+
+Route,Point Follower [s],Pure Pursuit [s]
+wp1,447.90,408.90
+wp2,119.35,156.60
+wp3,406.20,246.00
+wp4,353.55,301.35
+wp5,250.50,212.65
+# Travel Time Definition
+# Route set: wp1, wp2, wp3, wp4, wp5
+# Controllers compared: Point Follower and Pure Pursuit Follower
+# Start pose: identical for all trials
+# Same route, same velocity limits, same goal tolerance
+# Trajectory source: /sim/cmd_vel
+# Travel Time = elapsed time between first motion command and last motion command
+# Motion threshold: abs(linear.x) > 0.01 or abs(angular.z) > 0.01
+# Rosbag recording duration is NOT used
+# Unit: second [s]
+
+Route,Point Follower [s],Pure Pursuit [s]
+wp1,447.90,408.90
+wp2,119.35,156.60
+wp3,406.20,246.00
+wp4,353.55,301.35
+wp5,250.50,212.65
+# Travel Time Definition
+# Route set: wp1, wp2, wp3, wp4, wp5
+# Controllers compared: Point Follower and Pure Pursuit Follower
+# Start pose: identical for all trials
+# Same route, same velocity limits, same goal tolerance
+# Trajectory source: /sim/cmd_vel
+# Travel Time = elapsed time between first motion command and last motion command
+# Motion threshold: abs(linear.x) > 0.01 or abs(angular.z) > 0.01
+# Rosbag recording duration is NOT used
+# Unit: second [s]
+
+Route,Point Follower [s],Pure Pursuit [s]
+wp1,447.90,408.90
+wp2,119.35,156.60
+wp3,406.20,246.00
+wp4,353.55,301.35
+wp5,250.50,212.65

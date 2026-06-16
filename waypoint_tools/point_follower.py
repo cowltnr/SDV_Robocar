@@ -4,7 +4,7 @@ from rclpy.node import Node
 from std_msgs.msg import String
 from geometry_msgs.msg import Twist
 import tf2_ros
-from waypoint_routes.routes import ROUTES, VALID_WPS
+from waypoint_tools.waypoint_routes.routes import ROUTES, VALID_WPS
 
 
 class RouteFollower(Node):
@@ -20,8 +20,8 @@ class RouteFollower(Node):
         self.linear_k = 2  # 직진 속도 gain
         self.angular_k = 0.7  # 회전 속도 gain
 
-        self.max_linear = 2.0  # 최대 직진 속도
-        self.max_angular = 1.0  # 최대 회전 속도
+        self.max_linear = 1.5  # 최대 직진 속도
+        self.max_angular = 0.9  # 최대 회전 속도
 
         self.heading_threshold = 0.5  # 방향 차이가 크면 회전 우선 [rad]
 
@@ -53,6 +53,13 @@ class RouteFollower(Node):
             String,
             '/selected_route',
             self.selected_route_callback,
+            10
+        )
+
+        self.route_goal_sub = self.create_subscription(
+            String,
+            '/selected_route_goal',
+            self.selected_route_goal_callback,
             10
         )
 
@@ -106,6 +113,86 @@ class RouteFollower(Node):
 
         self.get_logger().info(f"Selected route: {route_name}")
         self.get_logger().info(f"Total waypoints: {len(self.active_route)}")
+
+    def selected_route_goal_callback(self, msg):
+        try:
+            raw = msg.data.strip()
+
+            route_part, goal_part = raw.split(";")
+            route_name = route_part.strip()
+
+            goal_x_str, goal_y_str = goal_part.split(",")
+            goal_x = float(goal_x_str.strip())
+            goal_y = float(goal_y_str.strip())
+
+        except Exception as e:
+            self.get_logger().warn(
+                f"Invalid /selected_route_goal format: {msg.data}. "
+                f"Use 'wp_name;x,y'. error={e}"
+            )
+            self.stop_robot()
+            return
+
+        if route_name not in self.routes:
+            self.get_logger().warn(f"Unknown route: {route_name}")
+            self.stop_robot()
+            return
+
+        full_route = self.routes[route_name]
+
+        cut_route, dist = self.cut_route_until_goal(
+            full_route,
+            goal_x,
+            goal_y,
+            tolerance=0.5
+        )
+
+        if cut_route is None:
+            self.get_logger().warn(
+                f"Goal ({goal_x}, {goal_y}) is not on route {route_name}. "
+                f"distance_to_route={dist:.3f}"
+            )
+            self.stop_robot()
+            self.is_running = False
+            return
+
+        self.active_route_name = f"{route_name}_to_goal"
+        self.active_route = cut_route
+
+        pose = self.get_robot_pose()
+
+        if pose is None:
+            self.get_logger().warn(
+                "Robot pose is not available. Start route from first waypoint."
+            )
+            self.current_idx = 0
+        else:
+            robot_x, robot_y, _ = pose
+
+            nearest_idx, nearest_dist = self.find_nearest_waypoint_idx(
+                self.active_route,
+                robot_x,
+                robot_y
+            )
+
+            if nearest_dist < self.goal_tolerance and nearest_idx < len(self.active_route) - 1:
+                self.current_idx = nearest_idx + 1
+            else:
+                self.current_idx = nearest_idx
+
+            self.get_logger().info(
+                f"Nearest waypoint selected: start_index={self.current_idx + 1}/"
+                f"{len(self.active_route)}, nearest_dist={nearest_dist:.2f} m"
+            )
+
+        self.is_running = True
+
+        self.get_logger().info(
+            f"Selected route with goal: {route_name} -> ({goal_x}, {goal_y})"
+        )
+        self.get_logger().info(
+            f"Trimmed route points: {len(self.active_route)}"
+        )
 
     '''def intent_goal_callback(self, msg):
         try:
@@ -189,6 +276,59 @@ class RouteFollower(Node):
 
         return nearest_idx, min_dist
 
+    def point_to_segment_distance(self, px, py, ax, ay, bx, by):
+        abx = bx - ax
+        aby = by - ay
+        apx = px - ax
+        apy = py - ay
+
+        ab_len_sq = abx * abx + aby * aby
+
+        if ab_len_sq < 1e-9:
+            return math.sqrt((px - ax) ** 2 + (py - ay) ** 2), 0.0
+
+        t = (apx * abx + apy * aby) / ab_len_sq
+        t = self.clamp(t, 0.0, 1.0)
+
+        proj_x = ax + t * abx
+        proj_y = ay + t * aby
+
+        dist = math.sqrt((px - proj_x) ** 2 + (py - proj_y) ** 2)
+        return dist, t
+
+    def cut_route_until_goal(self, route, goal_x, goal_y, tolerance=0.5):
+        best_idx = None
+        best_dist = float("inf")
+        best_t = 0.0
+
+        for i in range(len(route) - 1):
+            ax, ay = route[i]
+            bx, by = route[i + 1]
+
+            dist, t = self.point_to_segment_distance(
+                goal_x, goal_y,
+                ax, ay,
+                bx, by
+            )
+
+            if dist < best_dist:
+                best_dist = dist
+                best_idx = i
+                best_t = t
+
+        if best_idx is None or best_dist > tolerance:
+            return None, best_dist
+
+        # best_idx 선분까지 route를 자르고, 마지막에 실제 goal point 추가
+        cut_route = list(route[:best_idx + 1])
+
+        # goal이 기존 waypoint와 거의 같지 않으면 goal point 추가
+        last_x, last_y = cut_route[-1]
+        if math.sqrt((goal_x - last_x) ** 2 + (goal_y - last_y) ** 2) > 1e-3:
+            cut_route.append((goal_x, goal_y))
+
+        return cut_route, best_dist
+
     def control_loop(self):
         if not self.is_running:
             return
@@ -241,7 +381,7 @@ class RouteFollower(Node):
         else:
             cmd.linear.x = self.clamp(
                 self.linear_k * distance,
-                0.08,
+                0.12,
                 self.max_linear
             )
             cmd.angular.z = self.clamp(

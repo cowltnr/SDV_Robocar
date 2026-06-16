@@ -1,0 +1,15 @@
+# Tracking Error Definition
+# Reference: waypoint route segments (piecewise linear path)
+# Trajectory source: odom -> base_link transform from /tf
+# Error metric: shortest Euclidean distance from each trajectory point to the reference route
+# Mean Error: average cross-track error [m]
+# Max Error: maximum cross-track error [m]
+# RMSE: root mean square cross-track error [m]
+# Unit: meter [m]
+
+Route,Point Mean [m],Point Max [m],Point RMSE [m],Pure Pursuit Mean [m],Pure Pursuit Max [m],Pure Pursuit RMSE [m]
+wp1,1.460,10.294,2.872,1.686,10.290,3.424
+wp2,1.938,8.997,3.685,1.435,8.999,2.979
+wp3,1.405,10.294,2.862,1.552,10.292,3.188
+wp4,1.836,10.294,3.429,1.744,10.294,3.472
+wp5,1.863,10.294,3.539,1.826,10.293,3.592
