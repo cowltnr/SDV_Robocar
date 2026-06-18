@@ -206,7 +206,7 @@ def plot_vlm_route_switching():
                 color="red",
                 edgecolors="black",
                 linewidths=1.5,
-                label="Obstacle at wp2 start",
+                label="Obstacle",
                 zorder=10
             )
 
