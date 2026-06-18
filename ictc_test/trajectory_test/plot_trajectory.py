@@ -182,9 +182,20 @@ def plot_route(target_route):
         length=6
     )
 
+    subplot_labels = {
+        "wp1": "(a)",
+        "wp2": "(b)",
+        "wp3": "(c)",
+        "wp4": "(d)",
+        "wp5": "(e)",
+    }
+
     plt.xlabel("x [m]", fontsize=16)
     plt.ylabel("y [m]", fontsize=16)
-    plt.title(f"Point vs Pure Pursuit Trajectory ({target_route})", fontsize=17)
+    plt.title(
+        f"{subplot_labels[target_route]} Point vs Pure Pursuit Trajectory ({target_route})",
+        fontsize=17
+    )
     plt.axis("equal")
 
     plt.grid(True)
@@ -209,6 +220,7 @@ def plot_all_reference_routes():
             linewidth=5.0,
             label=f"{route_name} reference",
             color=POINT_COLORS[route_name],
+            alpha=0.5,
             zorder=1
         )
 
@@ -218,6 +230,7 @@ def plot_all_reference_routes():
             color=POINT_COLORS[route_name],
             edgecolors="black",
             linewidths=0.5,
+            alpha=0.5,
             zorder=2
         )
 

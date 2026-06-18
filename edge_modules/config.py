@@ -30,7 +30,7 @@ STRAIGHT_ANG = 0.0
 FORWARD_SPEED = 0.8
 
 VALID_WPS = ["wp1", "wp2", "wp3", "wp4", "wp5"]
-ROUTE_SELECT_TRIGGER = 4.0    # 4m 이하: VLM에게 우회 wp 선택 요청
+ROUTE_SELECT_TRIGGER = 6.0    # 4m 이하: VLM에게 우회 wp 선택 요청
 EMERGENCY_STOP_TRIGGER = 1.2    # 1.2m 이하: VLM 판단과 관계없이 무조건 정지
 
 USER_INTENT_TOPIC = "/user_intent_goal"

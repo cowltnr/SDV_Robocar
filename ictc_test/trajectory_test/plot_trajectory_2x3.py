@@ -5,7 +5,7 @@ import matplotlib.image as mpimg
 PLOT_DIR = Path("plot")
 
 image_files = [
-    PLOT_DIR / "reference_routes_wp1_wp5.png",
+    #PLOT_DIR / "reference_routes_wp1_wp5.png",
     PLOT_DIR / "compare_wp1_trajectory.png",
     PLOT_DIR / "compare_wp2_trajectory.png",
     PLOT_DIR / "compare_wp3_trajectory.png",
@@ -43,7 +43,7 @@ fig.text(
 plt.tight_layout(rect=[0, 0.07, 1, 1])
 
 plt.tight_layout()
-save_path = PLOT_DIR / "compare_all_routes2_2x3.png"
+save_path = PLOT_DIR / "compare_all_routes_2x3.png"
 plt.savefig(save_path, dpi=300, bbox_inches="tight")
 plt.close()
 

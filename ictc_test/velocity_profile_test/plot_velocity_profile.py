@@ -13,6 +13,14 @@ PLOT_DIR.mkdir(parents=True, exist_ok=True)
 
 ROUTES = ["wp1", "wp2", "wp3", "wp4", "wp5"]
 
+SUBPLOT_LABELS = {
+    "wp1": "(a)",
+    "wp2": "(b)",
+    "wp3": "(c)",
+    "wp4": "(d)",
+    "wp5": "(e)",
+}
+
 POINT_COLOR = "#ff7f0e"
 PURSUIT_COLOR = "#1f77b4"
 
@@ -138,7 +146,10 @@ def plot_velocity_profile(target_route):
         alpha=0.8
     )
     axes[0].set_ylabel("Linear velocity [m/s]", fontsize=16)
-    axes[0].set_title(f"Velocity Profile Comparison ({target_route})", fontsize=17)
+    axes[0].set_title(
+        f"{SUBPLOT_LABELS[target_route]} Velocity Profile Comparison ({target_route})",
+        fontsize=17
+    )
     axes[0].legend(fontsize=14)
     style_axis(axes[0])
 
