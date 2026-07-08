@@ -20,6 +20,8 @@ PLOT_DIR.mkdir(parents=True, exist_ok=True)
 ROUTE_NAMES = ["wp1", "wp2", "wp3", "wp4", "wp5"]
 METHODS = ["point", "pursuit"]
 
+EVAL_START_X = 9.0
+
 
 def extract_trajectory(bag_path):
     conn = sqlite3.connect(bag_path)
@@ -99,6 +101,18 @@ def distance_point_to_route(point, route_points):
     return min_dist
 
 
+def crop_trajectory_from_x(trajectory, start_x=EVAL_START_X):
+    """
+    Use trajectory points only after the robot reaches x >= start_x.
+    This removes the initial approach segment before entering the reference route.
+    """
+    for i, (x, y) in enumerate(trajectory):
+        if x >= start_x:
+            return trajectory[i:]
+
+    raise RuntimeError(f"No trajectory point found with x >= {start_x}")
+
+
 def compute_tracking_error(trajectory, reference_route):
     errors = []
 
@@ -134,6 +148,8 @@ def main():
             bag_path = BAG_ROOT / f"{method}_{route_name}" / f"{method}_{route_name}_0.db3"
 
             trajectory = extract_trajectory(str(bag_path))
+            trajectory = crop_trajectory_from_x(trajectory, EVAL_START_X)
+
             mean_error, max_error, rmse_error = compute_tracking_error(
                 trajectory,
                 reference_route
