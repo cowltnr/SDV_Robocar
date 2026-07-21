@@ -1,0 +1,101 @@
+# Never let Codex publish ROS2 topics automatically.
+prefix_rule(
+    pattern = ["ros2", "topic", "pub"],
+    decision = "forbidden",
+    justification = "Review and run ROS2 topic publication manually because it can change robot or simulator state.",
+    match = [
+        "ros2 topic pub --once /selected_route std_msgs/msg/String {data: wp1}",
+        "ros2 topic pub --once /user_intent_goal std_msgs/msg/String {data: 11.0,0.0}",
+        "ros2 topic pub /sim/cmd_vel geometry_msgs/msg/Twist {}",
+    ],
+)
+
+# Starting ROS2 nodes may create publishers or change runtime state.
+prefix_rule(
+    pattern = ["ros2", ["run", "launch"]],
+    decision = "prompt",
+    justification = "ROS2 nodes may publish motion commands or conflict with an existing controller.",
+    match = [
+        "ros2 run waypoint_tools pure_pursuit_follower",
+        "ros2 run waypoint_tools intent_decision",
+        "ros2 launch waypoint_tools navigation.launch.py",
+    ],
+)
+
+# Building a ROS2 workspace can modify files outside the repository worktree.
+prefix_rule(
+    pattern = ["colcon", "build"],
+    decision = "prompt",
+    justification = "Review the target workspace and package before building.",
+    match = [
+        "colcon build --symlink-install --packages-select waypoint_tools",
+    ],
+)
+
+# Runtime entry points can access sensors, ports, ROS2, or robot control.
+prefix_rule(
+    pattern = [
+        ["python", "python3"],
+        [
+            "edge_control.py",
+            "imo_control.py",
+            "imo_server_lidar.py",
+            "intent_server.py",
+            "k8s_server.py",
+            "vlm_server.py"
+        ]
+    ],
+    decision = "prompt",
+    justification = "These programs can start servers, access sensors, call a VLM, or affect robot control.",
+    match = [
+        "python edge_control.py",
+        "python3 imo_server_lidar.py",
+        "python vlm_server.py",
+        "python3 k8s_server.py",
+    ],
+)
+
+# Ollama can start services, download models, and consume significant resources.
+prefix_rule(
+    pattern = ["ollama", ["serve", "pull", "run"]],
+    decision = "prompt",
+    justification = "Review model, network, storage, and GPU usage before running Ollama.",
+    match = [
+        "ollama serve",
+        "ollama pull qwen2.5vl:3b",
+        "ollama run qwen2.5vl:3b",
+    ],
+)
+
+# Recursive deletion is not allowed from Codex.
+prefix_rule(
+    pattern = ["rm", "-rf"],
+    decision = "forbidden",
+    justification = "Delete reviewed files individually; do not recursively remove project data or experiment artifacts.",
+    match = [
+        "rm -rf logs",
+        "rm -rf artifacts",
+        "rm -rf .",
+    ],
+)
+
+# Destructive Git history operations are not allowed.
+prefix_rule(
+    pattern = ["git", "reset", "--hard"],
+    decision = "forbidden",
+    justification = "Use a new branch, commit, or reviewed restore operation instead.",
+    match = [
+        "git reset --hard",
+        "git reset --hard HEAD~1",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", "push", ["--force", "-f"]],
+    decision = "forbidden",
+    justification = "Use a normal push or a new branch instead of rewriting remote history.",
+    match = [
+        "git push --force origin ICTC2026",
+        "git push -f origin harness/bootstrap",
+    ],
+)
