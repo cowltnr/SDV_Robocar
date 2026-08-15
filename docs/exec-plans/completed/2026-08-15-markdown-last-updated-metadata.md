@@ -1,4 +1,4 @@
-> Last updated: 2026-08-15 21:16 KST
+> Last updated: 2026-08-15 21:30 KST
 
 # Markdown last-updated metadata migration
 
@@ -33,6 +33,15 @@
 - Batch timestamp: `2026-08-15 21:16 KST`.
 - Validation results: focused contract test passed twice after the rewrite; the
   approved inventory reports 39 in-scope Markdown files.
+- 2026-08-15 21:30 KST: Task 2 independently reran `bash scripts/check.sh`
+  (exit 0; 17 tests passed) and `bash scripts/test_offline.sh` (exit 0; 17
+  tests passed). Neither command required a sandbox-external retry.
+- Final inventory: 39 in-scope Markdown files, all with a well-formed first
+  line. The `2026-08-15 21:16 KST` batch timestamp remains the exact timestamp
+  used for the migration batch.
+- Completion review confirmed that the timestamp rollout did not modify
+  production Python or ROS2 files, the excluded trees remain excluded from the
+  contract, and no live or safety-sensitive command was run.
 
 ## Decision log
 
@@ -43,3 +52,15 @@
   delimiter was omitted. It made no file changes; the corrected command using
   the required delimiter completed successfully with the recorded batch
   timestamp.
+- Direct edits made outside Codex can leave an otherwise well-formed timestamp
+  stale; this workflow requires Codex to update the first line with each
+  Markdown edit but does not install a Git hook, daemon, watcher, or editor
+  plugin.
+
+## Acceptance completion
+
+- [x] No in-scope Markdown file has a missing or malformed first line.
+- [x] The focused contract test is green (RED evidence is recorded above).
+- [x] `scripts/check.sh` and `scripts/test_offline.sh` both pass.
+- [x] The final commit is limited to intentional tracked documentation and
+  contract-test content; unrelated local work is preserved.
