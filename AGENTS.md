@@ -38,6 +38,24 @@ This repository implements an indoor robotic framework using:
 - `vlm_server.py`: VLM route-selection server
 - `k8s_server.py`: JSON and image logging server
 
+## Markdown documentation locations
+
+- Keep `README.md`, `AGENTS.md`, and `ARCHITECTURE.md` at repository root.
+- Use `docs/index.md` as the central document map.
+- Store general documents in the closest matching subdirectory under `docs/`.
+- Store meeting records in `docs/meetings/`.
+- Store safety documents in `docs/safety/`.
+- Store experiment protocols and evaluation documents in `docs/experiments/`.
+- Store active execution plans in `docs/exec-plans/active/` and move completed
+  plans to `docs/exec-plans/completed/`.
+- Store Superpowers designs in `docs/superpowers/specs/` and implementation
+  plans in `docs/superpowers/plans/`.
+- Store automation operations documents in `docs/automation/`.
+- If the user specifies a path, use that path. Prefer updating an existing
+  document over creating a duplicate.
+- Register a new document category in `docs/index.md` before using a new
+  directory.
+
 ## Golden rules
 
 - Inspect related code and tests before editing.

@@ -7,6 +7,37 @@
 - [`safety/robot-safety.md`](safety/robot-safety.md): simulator and robot safety rules
 - [`experiments/protocol.md`](experiments/protocol.md): research evaluation protocol
 
+## Markdown location map
+
+Use this table as the default location guide when creating or looking for a
+Markdown document. An explicitly requested path takes precedence.
+
+| Document category | Location | Notes |
+|---|---|---|
+| Project overview | [`../README.md`](../README.md) | Keep at repository root for GitHub and tool discovery. |
+| Codex repository instructions | [`../AGENTS.md`](../AGENTS.md) | Keep at repository root so the rules apply to the whole repository. |
+| Top-level architecture | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) | Verified architecture and interface audit. |
+| General project documentation | [`./`](./) | Use the closest matching category below instead of adding arbitrary root files. |
+| Safety | [`safety/`](safety/) | Robot, simulator, ROS2, and runtime safety rules. |
+| Experiments | [`experiments/`](experiments/) | Protocols, evaluation definitions, and reproducibility requirements. |
+| Meeting records | `docs/meetings/` | Dated meeting records and their index. |
+| Research direction | `docs/research-direction.md` | Current priorities and decision history. |
+| Active execution plans | [`exec-plans/active/`](exec-plans/active/) | Work currently in progress. |
+| Completed execution plans | [`exec-plans/completed/`](exec-plans/completed/) | Completed work, decisions, and validation evidence. |
+| Technical debt | [`exec-plans/tech-debt.md`](exec-plans/tech-debt.md) | Verified issues outside the current task scope. |
+| Superpowers designs | [`superpowers/specs/`](superpowers/specs/) | Approved design documents generated during brainstorming. |
+| Superpowers implementation plans | [`superpowers/plans/`](superpowers/plans/) | Task-by-task implementation plans. |
+| Automation operations | [`automation/index.md`](automation/index.md) | Setup, scheduling, operation, and troubleshooting documents. |
+| Experiment run artifacts | [`../artifacts/runs/`](../artifacts/runs/) | Run metadata and results; follow the experiment protocol. |
+| Local weekly-report instructions | `../WEEKLY_REPORT_AUTOMATION.md` | Local-only root exception consumed by `scripts/run_weekly_report.sh`; intentionally excluded from Git. |
+
+To enumerate all current project Markdown files while excluding the embedded
+Isaac Sim runtime, Git internals, and caches, run:
+
+```bash
+rg --files -uu -g '*.md' -g '!IsaacSim/**' -g '!.git/**' -g '!**/__pycache__/**' | sort
+```
+
 ## Execution plans
 
 - [`exec-plans/active/`](exec-plans/active/): work currently in progress

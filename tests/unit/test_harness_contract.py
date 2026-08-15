@@ -97,6 +97,42 @@ class HarnessContractTest(unittest.TestCase):
         ]
         self.assertEqual([], missing, f"Missing architecture audit content: {missing}")
 
+    def test_markdown_document_locations_are_indexed(self) -> None:
+        agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        index = (ROOT / "docs/index.md").read_text(encoding="utf-8")
+
+        required_agent_locations = [
+            "## Markdown documentation locations",
+            "docs/meetings/",
+            "docs/experiments/",
+            "docs/exec-plans/active/",
+            "docs/superpowers/specs/",
+            "docs/superpowers/plans/",
+            "docs/automation/",
+        ]
+        required_index_entries = [
+            "## Markdown location map",
+            "superpowers/specs/",
+            "superpowers/plans/",
+            "automation/index.md",
+            "WEEKLY_REPORT_AUTOMATION.md",
+        ]
+
+        missing_agents = [
+            text for text in required_agent_locations if text not in agents
+        ]
+        missing_index = [
+            text for text in required_index_entries if text not in index
+        ]
+
+        self.assertEqual(
+            [], missing_agents, f"Missing AGENTS.md locations: {missing_agents}"
+        )
+        self.assertEqual(
+            [], missing_index, f"Missing docs index entries: {missing_index}"
+        )
+        self.assertTrue((ROOT / "docs/automation/index.md").is_file())
+
 
 if __name__ == "__main__":
     unittest.main()
