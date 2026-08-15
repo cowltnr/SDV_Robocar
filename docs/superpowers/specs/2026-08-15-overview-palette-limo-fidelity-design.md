@@ -92,10 +92,20 @@ overwritten:
 - `ictc_test/backup/2026-08-15_first_generated_robot_motion_control.png`
 - `ictc_test/backup/2026-08-15_first_generated_robot_motion_control_future.png`
 
-The active outputs, and only the active outputs, are replaced:
+The active image outputs are replaced:
 
 - `ictc_test/robot_motion_control_current.png`
 - `ictc_test/robot_motion_control_future.png`
+
+The companion explanation is updated after both images are finalized:
+
+- `ictc_test/robot_motion_control_architecture_explanation.txt`
+
+The explanation must describe each PNG separately in plain language, identify
+current behavior versus proposed behavior, list the exact ROS2 topics and HTTP
+endpoints shown, explain the arrow directions, and record verified code
+limitations. It must not describe a box or connection that is absent from the
+corresponding final PNG.
 
 ## Approved topology corrections
 
@@ -143,6 +153,8 @@ They correct the topology instead of painting over individual pixels.
 - The exact RobotLAB LIMO PNG is composited without redrawing or recoloring.
 - Both active outputs are 1672×941 PNG files and are visually inspected at
   original resolution.
+- `robot_motion_control_architecture_explanation.txt` matches the final boxes,
+  labels, arrows, current caveats, and proposed-only components in both PNGs.
 - The two backup SHA-256 values remain unchanged after generation.
 - Verification is static and offline only; no ROS2, simulator, Flask, Ollama,
   or robot process is started.

@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Do not modify either file under `ictc_test/backup/`.
-- Replace only `ictc_test/robot_motion_control_current.png` and `ictc_test/robot_motion_control_future.png`.
+- Replace `ictc_test/robot_motion_control_current.png` and `ictc_test/robot_motion_control_future.png`, then synchronize `ictc_test/robot_motion_control_architecture_explanation.txt` with the final images.
 - Both active outputs must be 1672×941 PNG files with background `#F7F9F8`.
 - Preserve the approved backup composition, rounded geometry, pastel palette, and compact orthogonal arrows.
 - Use the exact RobotLAB asset from `https://new.robotlab.com/hubfs/LIMO%20ROS2_20231018_2-1.png`; do not redraw or recolor it.
@@ -206,6 +206,7 @@
 **Files:**
 - Review: `ictc_test/robot_motion_control_current.png`
 - Review: `ictc_test/robot_motion_control_future.png`
+- Modify: `ictc_test/robot_motion_control_architecture_explanation.txt`
 - Preserve: `ictc_test/backup/2026-08-15_first_generated_robot_motion_control.png`
 - Preserve: `ictc_test/backup/2026-08-15_first_generated_robot_motion_control_future.png`
 
@@ -213,11 +214,30 @@
 - Consumes: both active outputs and immutable backups
 - Produces: static verification evidence and a final scope review
 
-- [ ] **Step 1: Verify file format, dimensions, and required colors**
+- [ ] **Step 1: Synchronize the companion TXT explanation**
+
+  Rewrite `ictc_test/robot_motion_control_architecture_explanation.txt` so it
+  explains each final PNG separately and includes:
+
+  ```text
+  current: sensor subscriptions and multiprocessing boundary; HTTP gateway;
+  fusion -> edge safety; /user_intent_goal -> IntentDecisionNode;
+  POST /select_wp request/result; POST /inference logging direction;
+  route/stop topic subscriptions; TF; direct /sim/cmd_vel; current caveats
+
+  future: solid current baseline; target-only Intent/Safety/Controller managers;
+  VLM advisory; state/health validation; Fallback Safe Stop;
+  internal velocity proposal; sole target Command Arbitration publisher
+  ```
+
+  State explicitly that `TARGET`/`PROPOSED` elements are not production code.
+  Do not document any node, topic, endpoint, or arrow absent from the PNGs.
+
+- [ ] **Step 2: Verify file format, dimensions, and required colors**
 
   Run `file` and `identify` on both active PNGs. Use Pillow to assert each image is 1672×941 RGB and contains `#F7F9F8`, `#B4DBEB`, `#F7E5B4`, `#C6CBE7`, and `#CFD0B9`.
 
-- [ ] **Step 2: Verify exact interface strings**
+- [ ] **Step 3: Verify exact interface strings**
 
   Review the rendered labels at original resolution against this set:
 
@@ -240,11 +260,11 @@
   geometry_msgs/Twist
   ```
 
-- [ ] **Step 3: Recheck immutable backup hashes**
+- [ ] **Step 4: Recheck immutable backup hashes**
 
   Run `sha256sum` on both backups. Expected: exact values from Global Constraints.
 
-- [ ] **Step 4: Run repository checks**
+- [ ] **Step 5: Run repository checks**
 
   Run:
 
@@ -255,6 +275,6 @@
 
   Expected: both commands exit 0. No live ROS2 or simulator command is permitted.
 
-- [ ] **Step 5: Review final scope**
+- [ ] **Step 6: Review final scope**
 
-  Run `git status --short` and `git diff --check`. Confirm the implementation changed only the two active PNGs in addition to the approved design and plan documents; report unrelated pre-existing files separately.
+  Run `git status --short` and `git diff --check`. Confirm the implementation changed only the two active PNGs and their companion TXT in addition to the approved design and plan documents; report unrelated pre-existing files separately.
