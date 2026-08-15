@@ -1,3 +1,5 @@
+> Last updated: 2026-08-15 21:16 KST
+
 # ROS2 Topic Control Figures Correction Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

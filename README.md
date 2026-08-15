@@ -1,3 +1,5 @@
+> Last updated: 2026-08-15 21:16 KST
+
 # SDV Robocar Framework
 
 Camera–2D LiDAR fusion, obstacle-aware stopping, VLM-based route selection, and waypoint following framework for a LIMO robot in Isaac Sim / ROS2.

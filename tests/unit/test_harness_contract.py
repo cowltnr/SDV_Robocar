@@ -1,11 +1,54 @@
+from collections.abc import Iterator
+import os
 from pathlib import Path
+import re
 import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
+EXCLUDED_MARKDOWN_ROOTS = {".git", "IsaacSim"}
+LAST_UPDATED_PATTERN = re.compile(
+    r"^> Last updated: \d{4}-\d{2}-\d{2} \d{2}:\d{2} KST$"
+)
+
+
+def iter_project_markdown_files() -> Iterator[Path]:
+    for directory, dirnames, filenames in os.walk(ROOT):
+        relative_directory = Path(directory).relative_to(ROOT)
+        kept_directories = []
+        for name in dirnames:
+            relative_child = relative_directory / name
+            if name == "__pycache__":
+                continue
+            if relative_child.parts[0] in EXCLUDED_MARKDOWN_ROOTS:
+                continue
+            if relative_child.parts[:2] == (".superpowers", "sdd"):
+                continue
+            kept_directories.append(name)
+        dirnames[:] = kept_directories
+
+        for filename in filenames:
+            if filename.endswith(".md"):
+                yield Path(directory) / filename
+
+
 class HarnessContractTest(unittest.TestCase):
+    def test_markdown_files_start_with_last_updated_timestamp(self) -> None:
+        invalid = []
+        for path in sorted(iter_project_markdown_files()):
+            lines = path.read_text(encoding="utf-8").splitlines()
+            first_line = lines[0] if lines else ""
+            if LAST_UPDATED_PATTERN.fullmatch(first_line) is None:
+                invalid.append(str(path.relative_to(ROOT)))
+
+        self.assertEqual(
+            [],
+            invalid,
+            f"Markdown files missing valid last-updated metadata: {invalid}",
+        )
+
     def test_required_files_exist(self) -> None:
         required = [
             "AGENTS.md",

@@ -1,3 +1,5 @@
+> Last updated: 2026-08-15 21:16 KST
+
 # Automation Documentation
 
 Store new automation setup, operation, scheduling, and troubleshooting Markdown

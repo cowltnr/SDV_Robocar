@@ -1,3 +1,5 @@
+> Last updated: 2026-08-15 21:16 KST
+
 # SDV Robocar Architecture and Static Source Audit
 
 ## Document status

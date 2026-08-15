@@ -1,3 +1,5 @@
+> Last updated: 2026-08-15 21:16 KST
+
 # SDV Robocar Codex Guidance
 
 ## Read first
@@ -40,6 +42,13 @@ This repository implements an indoor robotic framework using:
 
 ## Markdown documentation locations
 
+- Start every maintained project Markdown file with
+  `> Last updated: YYYY-MM-DD HH:MM KST`, followed by one blank line.
+- Whenever Codex creates or changes a maintained Markdown file, update that
+  timestamp using the current `Asia/Seoul` time.
+- Apply the timestamp rule to tracked, intentional untracked, and local-only
+  project documents. Exclude `IsaacSim/`, `.git/`, `.superpowers/sdd/`, and
+  directories named `__pycache__`.
 - Keep `README.md`, `AGENTS.md`, and `ARCHITECTURE.md` at repository root.
 - Use `docs/index.md` as the central document map.
 - Store general documents in the closest matching subdirectory under `docs/`.

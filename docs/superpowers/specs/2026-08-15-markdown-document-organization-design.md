@@ -1,3 +1,5 @@
+> Last updated: 2026-08-15 21:16 KST
+
 # Markdown 문서 위치 정리 설계
 
 ## 목적
