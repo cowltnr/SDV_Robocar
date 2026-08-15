@@ -14,8 +14,10 @@
 
 - Do not modify either file under `ictc_test/backup/`.
 - Replace `ictc_test/robot_motion_control_current.png` and `ictc_test/robot_motion_control_future.png`, then synchronize `ictc_test/robot_motion_control_architecture_explanation.txt` with the final images.
-- Both active outputs must be 1672×941 PNG files with background `#F7F9F8`.
-- Preserve the approved backup composition, rounded geometry, pastel palette, and compact orthogonal arrows.
+- Both active outputs must be 1672×941 PNG files with canvas background `#F7F9F8`.
+- Preserve the approved backup composition, attached rounded title tabs, inset rounded component boxes, and compact orthogonal arrows.
+- Use these exact title/body pairs: Cloud Server `#595959`/`#EEEEEE`; Perception `#B8E9FF`/`#F0FAFF`; Decision `#FEEFC5`/`#FFFAEA`; VLM Server `#E4F0D5`/`#F9FCF5`; Control `#CCD2F0`/`#F1F2F8`.
+- Use white `#FFFFFF` for component content boxes by default; any necessary extra color must be a related low-saturation pastel.
 - Use the exact RobotLAB asset from `https://new.robotlab.com/hubfs/LIMO%20ROS2_20231018_2-1.png`; do not redraw or recolor it.
 - Preserve exact spelling of ROS2 topics, HTTP endpoints, TF frames, and `geometry_msgs/Twist`.
 - Do not invent a public ROS2 topic for proposed internal velocity or health signals.
@@ -237,7 +239,7 @@
 
 - [ ] **Step 2: Verify file format, dimensions, and required colors**
 
-  Run `file` and `identify` on both active PNGs. Use Pillow to assert each image is 1672×941 RGB and contains `#F7F9F8`, `#B4DBEB`, `#F7E5B4`, `#C6CBE7`, and `#CFD0B9`.
+  Run `file` and `identify` on both active PNGs. Use Pillow to assert each image is 1672×941 RGB and contains canvas `#F7F9F8`, component white `#FFFFFF`, and the exact category pairs `#595959`/`#EEEEEE`, `#B8E9FF`/`#F0FAFF`, `#FEEFC5`/`#FFFAEA`, `#E4F0D5`/`#F9FCF5`, and `#CCD2F0`/`#F1F2F8` whenever that category appears.
 
 - [ ] **Step 3: Verify exact interface strings**
 

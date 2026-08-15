@@ -30,14 +30,27 @@ number `03` remain intact.
 
 - Canvas: 1672×941, warm off-white `#F7F9F8`.
 - Structural stroke and arrows: neutral gray near `#666767`.
-- Perception: pale blue group with a `#B4DBEB` title tab.
-- Decision: pale cream group with a cream title tab.
-- VLM/advisory: pale sage with olive dotted request/response arrows.
-- Control: pale lavender group with a lavender title tab.
+- Cloud Server: title background `#595959`, group background `#EEEEEE`.
+- Perception: title background `#B8E9FF`, group background `#F0FAFF`.
+- Decision: title background `#FEEFC5`, group background `#FFFAEA`.
+- VLM Server: title background `#E4F0D5`, group background `#F9FCF5`.
+- Control: title background `#CCD2F0`, group background `#F1F2F8`.
 - TF/state feedback: cyan dotted arrow.
 - Safety and verified caveats: restrained pastel red.
+- Every component content box uses white `#FFFFFF` by default. A tinted
+  component body is allowed only when it conveys a necessary state such as a
+  warning, safety stop, or proposal, and it must use a low-saturation pastel
+  derived from the nearest category color above.
+- Any additional color must remain in the same pastel family as the category
+  colors above and preserve dark-text contrast.
 - Use rounded rectangles, approximately 18 px group radius and 12 px module
   radius, matching the curvature of `overview.png`.
+- Preserve the backup relationship between title and component boxes: a title
+  uses a separate rounded tab attached to or slightly overlapping the category
+  group boundary, and white component boxes remain visibly inset in the tinted
+  group background.
+- Title tabs use the exact category title color, category bodies use the exact
+  matching background color, and nested functional cards remain white.
 - Use straight or orthogonal arrows. Every arrow must start and end at a named
   producer, consumer, or interface pill.
 - Arrow labels sit in white rounded pills and must not overlap lines, boxes, or
@@ -112,7 +125,8 @@ corresponding final PNG.
 ## Approved topology corrections
 
 The active figures retain the 1672×941 baseline composition, rounded boxes,
-pastel palette, and restrained orthogonal arrows of the immutable backups.
+exact category palette above, and restrained orthogonal arrows of the
+immutable backups.
 They correct the topology instead of painting over individual pixels.
 
 ### Current figure
