@@ -1,4 +1,4 @@
-> Last updated: 2026-08-15 21:30 KST
+> Last updated: 2026-08-15 21:40 KST
 
 # Markdown last-updated metadata migration
 
@@ -36,6 +36,10 @@
 - 2026-08-15 21:30 KST: Task 2 independently reran `bash scripts/check.sh`
   (exit 0; 17 tests passed) and `bash scripts/test_offline.sh` (exit 0; 17
   tests passed). Neither command required a sandbox-external retry.
+- Post-commit `bash scripts/check.sh` in the sandbox encountered five
+  LibreOffice rendering failures because `/run/user/1001/dconf/user` was
+  read-only; rerunning the same command outside the sandbox passed all 17
+  tests.
 - Final inventory: 39 in-scope Markdown files, all with a well-formed first
   line. The `2026-08-15 21:16 KST` batch timestamp remains the exact timestamp
   used for the migration batch.
