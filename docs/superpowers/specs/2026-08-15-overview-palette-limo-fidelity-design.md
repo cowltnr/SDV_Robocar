@@ -51,6 +51,18 @@ number `03` remain intact.
   group background.
 - Title tabs use the exact category title color, category bodies use the exact
   matching background color, and nested functional cards remain white.
+- Typography uses one reproducible sans-serif family matching the backup
+  visual weight: `/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf` for body,
+  topic, endpoint, and annotation text, and
+  `/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf` for the main title,
+  category titles, component titles, ROS role badges, and interface pills.
+- Use this shared 1672×941 type scale in both figures: 34 px main title, 18 px
+  category and principal component titles, 15 px normal interface/body text,
+  and 13 px compact topic rows, flow labels, and secondary notes. A smaller
+  size is allowed only to fit an exact code identifier inside its existing
+  backup-aligned box; never condense, stretch, italicize, or mix font families.
+- Preserve the backup hierarchy: bold titles, regular descriptive text, bold
+  `SUB`/`PUB`/`HTTP`/`TF` badges, and compact bold arrow-label pills.
 - Use straight or orthogonal arrows. Every arrow must start and end at a named
   producer, consumer, or interface pill.
 - Arrow labels sit in white rounded pills and must not overlap lines, boxes, or

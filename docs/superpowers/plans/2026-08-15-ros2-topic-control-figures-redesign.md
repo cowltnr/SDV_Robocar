@@ -18,6 +18,8 @@
 - Preserve the approved backup composition, attached rounded title tabs, inset rounded component boxes, and compact orthogonal arrows.
 - Use these exact title/body pairs: Cloud Server `#595959`/`#EEEEEE`; Perception `#B8E9FF`/`#F0FAFF`; Decision `#FEEFC5`/`#FFFAEA`; VLM Server `#E4F0D5`/`#F9FCF5`; Control `#CCD2F0`/`#F1F2F8`.
 - Use white `#FFFFFF` for component content boxes by default; any necessary extra color must be a related low-saturation pastel.
+- Use only DejaVu Sans: `DejaVuSans-Bold.ttf` for main/group/component titles and badges, `DejaVuSans.ttf` for body/topic text; shared scale is 34 px main title, 18 px group/principal title, 15 px body/interface, and 13 px compact rows/flow labels/notes.
+- Do not condense, stretch, italicize, or mix font families; both figures must use the same typography hierarchy.
 - Use the exact RobotLAB asset from `https://new.robotlab.com/hubfs/LIMO%20ROS2_20231018_2-1.png`; do not redraw or recolor it.
 - Preserve exact spelling of ROS2 topics, HTTP endpoints, TF frames, and `geometry_msgs/Twist`.
 - Do not invent a public ROS2 topic for proposed internal velocity or health signals.
@@ -240,6 +242,9 @@
 - [ ] **Step 2: Verify file format, dimensions, and required colors**
 
   Run `file` and `identify` on both active PNGs. Use Pillow to assert each image is 1672×941 RGB and contains canvas `#F7F9F8`, component white `#FFFFFF`, and the exact category pairs `#595959`/`#EEEEEE`, `#B8E9FF`/`#F0FAFF`, `#FEEFC5`/`#FFFAEA`, `#E4F0D5`/`#F9FCF5`, and `#CCD2F0`/`#F1F2F8` whenever that category appears.
+
+  Inspect the renderer font objects and final images to confirm both figures use
+  DejaVu Sans regular/bold only and the shared 34/18/15/13 px hierarchy.
 
 - [ ] **Step 3: Verify exact interface strings**
 
